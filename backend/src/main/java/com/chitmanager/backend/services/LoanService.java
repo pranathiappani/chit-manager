@@ -225,6 +225,12 @@ public class LoanService {
         return dto;
     }
 
+    @Transactional
+    public void deleteLoan(Long id) {
+        loanPaymentRepository.deleteAll(loanPaymentRepository.findByLoanId(id));
+        loanRepository.deleteById(id);
+    }
+
     private LoanPaymentDTO mapPaymentToDTO(LoanPayment p) {
         LoanPaymentDTO dto = new LoanPaymentDTO();
         dto.setId(p.getId());

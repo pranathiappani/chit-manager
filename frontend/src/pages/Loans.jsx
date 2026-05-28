@@ -31,6 +31,7 @@ const Loans = () => {
   const [openClose, setOpenClose] = useState(false);
   const [openCollectInterest, setOpenCollectInterest] = useState(false);
   const [openPaymentsLog, setOpenPaymentsLog] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   // Issue Loan Form State
   const [newLoan, setNewLoan] = useState({
@@ -48,11 +49,12 @@ const Loans = () => {
   const [interestPreview, setInterestPreview] = useState({ days: 0, interest: 0, collected: 0, remaining: 0, total: 0 });
 
   // Collect Interest Dialog State
-  const [interestPayment, setInterestPayment] = useState({
-    amount: '',
-    paymentDate: new Date().toISOString().split('T')[0],
-    remarks: ''
-  });
+  const [collectInterestDate, setCollectInterestDate] = useState(new Date().toISOString().split('T')[0]);
+  const [interestAmount, setInterestAmount] = useState('');
+  const [interestRemarks, setInterestRemarks] = useState('');
+
+  // Log Payments State
+  const [loggedPayments, setLoggedPayments] = useState([]);
 
   // Payments log viewer state
   const [payments, setPayments] = useState([]);
@@ -68,7 +70,7 @@ const Loans = () => {
       setLoans(loansRes.data || []);
       setMembers(membersRes.data || []);
     } catch (error) {
-      console.error('Failed to load loans data', error);
+      console.error('Failed to load loans page data', error);
     } finally {
       setLoading(false);
     }
@@ -77,6 +79,60 @@ const Loans = () => {
   useEffect(() => {
     fetchLoansAndMembers();
   }, []);
+
+  // Handle Create Dialog Open/Close
+  const handleCreateOpen = () => {
+    setNewLoan({
+      memberId: '',
+      amount: '',
+      interestRate: '',
+      startDate: new Date().toISOString().split('T')[0],
+      remarks: '',
+      interestType: 'ACCUMULATED'
+    });
+    setOpenCreate(true);
+  };
+
+  const handleCreateClose = () => {
+    setOpenCreate(false);
+  };
+
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault();
+    if (!newLoan.memberId || !newLoan.amount || !newLoan.interestRate || !newLoan.startDate) return;
+    if (submitting) return;
+    setSubmitting(true);
+
+    try {
+      const payload = {
+        memberId: Number(newLoan.memberId),
+        amount: Number(newLoan.amount),
+        interestRate: Number(newLoan.interestRate),
+        startDate: newLoan.startDate,
+        remarks: newLoan.remarks,
+        interestType: newLoan.interestType
+      };
+      await api.post('/loans', payload);
+      handleCreateClose();
+      fetchLoansAndMembers();
+    } catch (error) {
+      console.error('Failed to issue loan', error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteLoan = async (id) => {
+    if (window.confirm("Are you sure you want to delete this loan record? This will automatically clear all its associated payments.")) {
+      try {
+        await api.delete(`/loans/${id}`);
+        fetchLoansAndMembers();
+      } catch (error) {
+        console.error('Failed to delete loan', error);
+        alert("Could not delete the loan record.");
+      }
+    }
+  };
 
   // Recalculate preview in closing modal whenever closeDate changes
   useEffect(() => {
@@ -443,17 +499,37 @@ const Loans = () => {
                             >
                               Close Loan
                             </Button>
+                            <Button
+                              variant="contained"
+                              color="error"
+                              size="small"
+                              onClick={() => handleDeleteLoan(loan.id)}
+                              sx={{ fontWeight: 'bold' }}
+                            >
+                              Delete
+                            </Button>
                           </Box>
                         )}
                         {loan.status === 'CLOSED' && (
-                          <Button 
-                            variant="outlined" 
-                            size="small" 
-                            onClick={() => handleViewPaymentsOpen(loan)}
-                            sx={{ fontWeight: 'bold' }}
-                          >
-                            View Ledger
-                          </Button>
+                          <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button 
+                              variant="outlined" 
+                              size="small" 
+                              onClick={() => handleViewPaymentsOpen(loan)}
+                              sx={{ fontWeight: 'bold' }}
+                            >
+                              View Ledger
+                            </Button>
+                            <Button 
+                              variant="contained" 
+                              color="error"
+                              size="small" 
+                              onClick={() => handleDeleteLoan(loan.id)}
+                              sx={{ fontWeight: 'bold' }}
+                            >
+                              Delete
+                            </Button>
+                          </Box>
                         )}
                       </TableCell>
                     </TableRow>
@@ -544,8 +620,10 @@ const Loans = () => {
             </Grid>
           </DialogContent>
           <DialogActions sx={{ p: 2 }}>
-            <Button onClick={handleCreateClose} color="inherit">Cancel</Button>
-            <Button type="submit" variant="contained" color="primary">Issue Loan</Button>
+            <Button onClick={handleCreateClose} color="inherit" disabled={submitting}>Cancel</Button>
+            <Button type="submit" variant="contained" color="primary" disabled={submitting}>
+              {submitting ? 'Issuing...' : 'Issue Loan'}
+            </Button>
           </DialogActions>
         </form>
       </Dialog>

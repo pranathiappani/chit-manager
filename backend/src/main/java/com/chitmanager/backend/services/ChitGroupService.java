@@ -5,9 +5,7 @@ import com.chitmanager.backend.models.ChitGroup;
 import com.chitmanager.backend.models.ChitGroupStatus;
 import com.chitmanager.backend.models.ChitMember;
 import com.chitmanager.backend.models.Member;
-import com.chitmanager.backend.repositories.ChitGroupRepository;
-import com.chitmanager.backend.repositories.ChitMemberRepository;
-import com.chitmanager.backend.repositories.MemberRepository;
+import com.chitmanager.backend.repositories.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +24,15 @@ public class ChitGroupService {
 
     @Autowired
     private ChitMemberRepository chitMemberRepository;
+
+    @Autowired
+    private CollectionRepository collectionRepository;
+
+    @Autowired
+    private ActualPayoutRepository actualPayoutRepository;
+
+    @Autowired
+    private PayoutPlanRepository payoutPlanRepository;
 
     @Autowired
     private ProfitCalculationService profitCalculationService;
@@ -87,8 +94,19 @@ public class ChitGroupService {
 
     @Transactional
     public void deleteChitGroup(Long id) {
-        // Find and delete the chit group. Assuming database handles cascades or there are no connected rows yet.
-        // In a strict prod environment we would manually delete child entities (Payouts, Collections, Memberships) first.
+        // 1. Delete all collections belonging to this chit group
+        collectionRepository.deleteAll(collectionRepository.findByChitGroupId(id));
+        
+        // 2. Delete all actual payouts belonging to this chit group
+        actualPayoutRepository.deleteAll(actualPayoutRepository.findByChitGroupIdOrderByPayoutDateAsc(id));
+        
+        // 3. Delete all expected payout plans belonging to this chit group
+        payoutPlanRepository.deleteAll(payoutPlanRepository.findByChitGroupIdOrderByMonthNumberAsc(id));
+        
+        // 4. Delete all member associations belonging to this chit group
+        chitMemberRepository.deleteAll(chitMemberRepository.findByChitGroupId(id));
+        
+        // 5. Delete the chit group itself
         chitGroupRepository.deleteById(id);
     }
 

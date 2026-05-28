@@ -43,4 +43,10 @@ public class PayoutController {
     public ResponseEntity<List<PayoutPlanDTO>> getPayoutPlans(@PathVariable Long chitGroupId) {
         return ResponseEntity.ok(payoutService.getPayoutPlansForChit(chitGroupId));
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deletePayout(@PathVariable Long id) {
+        payoutService.deletePayout(id);
+        return ResponseEntity.ok("Payout record deleted successfully");
+    }
 }

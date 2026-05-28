@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Grid, Card, CardContent, Typography, Box, CircularProgress, useTheme, Table, TableBody, TableCell, TableHead, TableRow, Chip } from '@mui/material';
+import { Grid, Card, CardContent, Typography, Box, CircularProgress, useTheme, Table, TableBody, TableCell, TableHead, TableRow, Chip, Button } from '@mui/material';
 import { Users, Wallet, TrendingUp, AlertCircle } from 'lucide-react';
 import api from '../api/axiosConfig';
 
@@ -42,6 +42,25 @@ const Dashboard = () => {
     fetchStats();
   }, []);
 
+  const handleClearAllData = async () => {
+    const confirmation1 = window.confirm("⚠️ WARNING: You are about to clear the entire database!\n\nThis will permanently delete all members, chit groups, loans, collections, and payout records. This action cannot be undone.\n\nDo you want to proceed?");
+    if (confirmation1) {
+      const confirmation2 = window.prompt("To confirm database wipe, please type 'RESET' in the box below:");
+      if (confirmation2 === 'RESET') {
+        try {
+          const response = await api.post('/admin/clear');
+          alert(response.data);
+          window.location.reload();
+        } catch (error) {
+          console.error('Failed to clear database', error);
+          alert('Failed to clear database. Please verify connection to the server.');
+        }
+      } else {
+        alert("Reset cancelled. Typing did not match 'RESET'.");
+      }
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
@@ -52,6 +71,18 @@ const Dashboard = () => {
 
   return (
     <Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h5" sx={{ fontWeight: 'bold' }}>Dashboard Overview</Typography>
+        <Button 
+          variant="outlined" 
+          color="error" 
+          onClick={handleClearAllData}
+          sx={{ fontWeight: 'bold', borderWidth: '1.5px', '&:hover': { borderWidth: '1.5px', backgroundColor: 'error.main', color: '#fff' } }}
+        >
+          Reset Database
+        </Button>
+      </Box>
+
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard

@@ -7,6 +7,7 @@ import api from '../api/axiosConfig';
 const Members = () => {
   const [members, setMembers] = useState([]);
   const [open, setOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
 
   const fetchMembers = async () => {
@@ -29,12 +30,28 @@ const Members = () => {
   };
 
   const onSubmit = async (data) => {
+    if (submitting) return;
+    setSubmitting(true);
     try {
       await api.post('/members', data);
       handleClose();
       fetchMembers(); // Refresh list
     } catch (error) {
       console.error('Failed to create member', error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteMember = async (id) => {
+    if (window.confirm("Are you sure you want to delete this member? This will automatically clear all their associated loans, payments, collections, and payouts.")) {
+      try {
+        await api.delete(`/members/${id}`);
+        fetchMembers();
+      } catch (error) {
+        console.error('Failed to delete member', error);
+        alert("Could not delete the member. It might have active dependencies.");
+      }
     }
   };
 
@@ -74,7 +91,7 @@ const Members = () => {
                   <TableCell>{member.joiningDate}</TableCell>
                   <TableCell>
                     <IconButton size="small" color="primary"><Edit2 size={18} /></IconButton>
-                    <IconButton size="small" color="error"><Trash2 size={18} /></IconButton>
+                    <IconButton size="small" color="error" onClick={() => handleDeleteMember(member.id)} title="Delete Member"><Trash2 size={18} /></IconButton>
                   </TableCell>
                 </TableRow>
               ))
@@ -144,8 +161,10 @@ const Members = () => {
             </Grid>
           </DialogContent>
           <DialogActions sx={{ p: 2 }}>
-            <Button onClick={handleClose} color="inherit">Cancel</Button>
-            <Button type="submit" variant="contained" color="primary">Add Member</Button>
+            <Button onClick={handleClose} color="inherit" disabled={submitting}>Cancel</Button>
+            <Button type="submit" variant="contained" color="primary" disabled={submitting}>
+              {submitting ? 'Adding...' : 'Add Member'}
+            </Button>
           </DialogActions>
         </form>
       </Dialog>

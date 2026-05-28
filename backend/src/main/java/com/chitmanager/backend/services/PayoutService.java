@@ -170,6 +170,11 @@ public class PayoutService {
                 }).collect(Collectors.toList());
     }
 
+    @Transactional
+    public void deletePayout(Long id) {
+        actualPayoutRepository.deleteById(id);
+    }
+
     private PayoutDTO mapToDTO(ActualPayout payout) {
         PayoutDTO dto = new PayoutDTO();
         dto.setId(payout.getId());

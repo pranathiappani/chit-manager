@@ -2,7 +2,8 @@ package com.chitmanager.backend.services;
 
 import com.chitmanager.backend.dto.MemberDTO;
 import com.chitmanager.backend.models.Member;
-import com.chitmanager.backend.repositories.MemberRepository;
+import com.chitmanager.backend.repositories.*;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -11,6 +12,21 @@ import java.util.stream.Collectors;
 
 @Service
 public class MemberService {
+
+    @Autowired
+    private LoanRepository loanRepository;
+
+    @Autowired
+    private LoanPaymentRepository loanPaymentRepository;
+
+    @Autowired
+    private CollectionRepository collectionRepository;
+
+    @Autowired
+    private ActualPayoutRepository actualPayoutRepository;
+
+    @Autowired
+    private ChitMemberRepository chitMemberRepository;
 
     @Autowired
     private MemberRepository memberRepository;
@@ -47,7 +63,26 @@ public class MemberService {
         return mapToDTO(memberRepository.save(member));
     }
 
+    @Transactional
     public void deleteMember(Long id) {
+        // 1. Delete all loan payments for this member's loans
+        loanRepository.findByMemberId(id).forEach(loan -> {
+            loanPaymentRepository.deleteAll(loanPaymentRepository.findByLoanId(loan.getId()));
+        });
+        
+        // 2. Delete all loans for this member
+        loanRepository.deleteAll(loanRepository.findByMemberId(id));
+        
+        // 3. Delete all collections for this member
+        collectionRepository.deleteAll(collectionRepository.findByMemberId(id));
+        
+        // 4. Delete all actual payouts for this member
+        actualPayoutRepository.deleteAll(actualPayoutRepository.findByMemberId(id));
+        
+        // 5. Delete all memberships for this member
+        chitMemberRepository.deleteAll(chitMemberRepository.findByMemberId(id));
+        
+        // 6. Delete the member record itself
         memberRepository.deleteById(id);
     }
 

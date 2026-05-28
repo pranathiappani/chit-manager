@@ -11,6 +11,7 @@ const Chits = () => {
   const [assignOpen, setAssignOpen] = useState(false);
   const [selectedChitToAssign, setSelectedChitToAssign] = useState(null);
   const [selectedMemberToAssign, setSelectedMemberToAssign] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   
   const [planOpen, setPlanOpen] = useState(false);
   const [selectedChitForPlan, setSelectedChitForPlan] = useState(null);
@@ -55,6 +56,8 @@ const Chits = () => {
   };
 
   const onSubmit = async (data) => {
+    if (submitting) return;
+    setSubmitting(true);
     try {
       // Ensure numeric fields are correctly parsed
       const payload = {
@@ -75,6 +78,8 @@ const Chits = () => {
       fetchChits(); // Refresh list
     } catch (error) {
       console.error('Failed to create chit group', error);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -379,8 +384,10 @@ const Chits = () => {
             </Grid>
           </DialogContent>
           <DialogActions sx={{ p: 2 }}>
-            <Button onClick={handleClose} color="inherit">Cancel</Button>
-            <Button type="submit" variant="contained" color="primary">Create</Button>
+            <Button onClick={handleClose} color="inherit" disabled={submitting}>Cancel</Button>
+            <Button type="submit" variant="contained" color="primary" disabled={submitting}>
+              {submitting ? 'Creating...' : 'Create'}
+            </Button>
           </DialogActions>
         </form>
       </Dialog>

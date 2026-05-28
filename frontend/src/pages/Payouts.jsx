@@ -33,6 +33,7 @@ const Payouts = () => {
   const [payouts, setPayouts] = useState([]);
   const [payoutPlansConfig, setPayoutPlansConfig] = useState([]);
   const [open, setOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   
   const { register, handleSubmit, reset, setValue, control, formState: { errors } } = useForm();
 
@@ -48,6 +49,23 @@ const Payouts = () => {
     }
   }, [watchedPayoutMonth, payoutPlansConfig, setValue]);
 
+  const loadChitData = async (chitId) => {
+    try {
+      const [payoutsRes, membersRes, summaryRes, planRes] = await Promise.all([
+        api.get(`/payouts/chit/${chitId}`),
+        api.get(`/chits/${chitId}/members`),
+        api.get(`/payouts/chit/${chitId}/summary`),
+        api.get(`/chits/${chitId}/plans`)
+      ]);
+      setPayouts(payoutsRes.data || []);
+      setMembers(membersRes.data || []);
+      setSummary(summaryRes.data);
+      setPayoutPlansConfig(planRes.data || []);
+    } catch (error) {
+      console.error('Failed to load chit details', error);
+    }
+  };
+
   useEffect(() => {
     const fetchChits = async () => {
       try {
@@ -59,23 +77,6 @@ const Payouts = () => {
     };
     fetchChits();
   }, []);
-
-  const loadChitData = async (chitId) => {
-    try {
-      const [membersRes, summaryRes, payoutsRes, plansRes] = await Promise.all([
-        api.get(`/chits/${chitId}/members`),
-        api.get(`/payouts/chit/${chitId}/summary`),
-        api.get(`/payouts/chit/${chitId}`),
-        api.get(`/payouts/chit/${chitId}/plans`)
-      ]);
-      setMembers(membersRes.data || []);
-      setSummary(summaryRes.data || null);
-      setPayouts(payoutsRes.data || []);
-      setPayoutPlansConfig(plansRes.data || []);
-    } catch (error) {
-      console.error('Failed to load chit data', error);
-    }
-  };
 
   useEffect(() => {
     if (selectedChit) {
@@ -97,6 +98,8 @@ const Payouts = () => {
   const selectedChitData = chits.find(c => c.id === selectedChit);
 
   const onSubmit = async (data) => {
+    if (submitting) return;
+    setSubmitting(true);
     try {
       const payload = {
         chitGroupId: selectedChit,
@@ -111,6 +114,20 @@ const Payouts = () => {
       loadChitData(selectedChit); // Refresh engine summary and history
     } catch (error) {
       console.error('Failed to record payout', error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeletePayout = async (id) => {
+    if (window.confirm("Are you sure you want to delete this payout record? This will adjust the profit metrics and outstanding balances.")) {
+      try {
+        await api.delete(`/payouts/${id}`);
+        loadChitData(selectedChit);
+      } catch (error) {
+        console.error('Failed to delete payout', error);
+        alert("Could not delete the payout record.");
+      }
     }
   };
 
@@ -250,12 +267,13 @@ const Payouts = () => {
                   <TableCell sx={{ fontWeight: 'bold' }}>Payout Amount</TableCell>
                   <TableCell sx={{ fontWeight: 'bold' }}>Payout Date</TableCell>
                   <TableCell sx={{ fontWeight: 'bold' }}>Remarks</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {payouts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                    <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
                       No payouts recorded yet for this group.
                     </TableCell>
                   </TableRow>
@@ -267,6 +285,17 @@ const Payouts = () => {
                       <TableCell>₹{payout.payoutAmount?.toLocaleString()}</TableCell>
                       <TableCell>{payout.payoutDate}</TableCell>
                       <TableCell>{payout.remarks || '-'}</TableCell>
+                      <TableCell>
+                        <Button 
+                          variant="contained" 
+                          color="error" 
+                          size="small" 
+                          onClick={() => handleDeletePayout(payout.id)}
+                          sx={{ fontWeight: 'bold' }}
+                        >
+                          Delete
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -339,8 +368,10 @@ const Payouts = () => {
             </Grid>
           </DialogContent>
           <DialogActions sx={{ p: 2 }}>
-            <Button onClick={handleClose} color="inherit">Cancel</Button>
-            <Button type="submit" variant="contained" color="primary">Record Payout</Button>
+            <Button onClick={handleClose} color="inherit" disabled={submitting}>Cancel</Button>
+            <Button type="submit" variant="contained" color="primary" disabled={submitting}>
+              {submitting ? 'Recording...' : 'Record Payout'}
+            </Button>
           </DialogActions>
         </form>
       </Dialog>

@@ -47,4 +47,10 @@ public class LoanController {
     public ResponseEntity<List<LoanPaymentDTO>> getLoanPayments(@PathVariable Long id) {
         return ResponseEntity.ok(loanService.getLoanPayments(id));
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteLoan(@PathVariable Long id) {
+        loanService.deleteLoan(id);
+        return ResponseEntity.ok("Loan record deleted successfully");
+    }
 }
