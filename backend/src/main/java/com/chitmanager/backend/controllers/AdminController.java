@@ -59,6 +59,7 @@ public class AdminController {
         
         // Delete all users and reseed admin
         userRepository.deleteAll();
+        userRepository.flush(); // Force database sync so delete executes before insert
         
         User admin = User.builder()
                 .username("admin")

@@ -209,8 +209,9 @@ const Loans = () => {
         activePrincipal += principal;
       } else {
         closedPrincipal += principal;
-        interestEarned += Number(loan.calculatedInterest) || 0;
       }
+      // Sum up actual interest collected so far across all loans (active and closed)
+      interestEarned += Number(loan.collectedInterest) || 0;
     });
 
     return {
@@ -220,41 +221,6 @@ const Loans = () => {
       totalCount: loans.length
     };
   }, [loans]);
-
-  // Handle Loan Creation
-  const handleCreateOpen = () => setOpenCreate(true);
-  const handleCreateClose = () => {
-    setOpenCreate(false);
-    setNewLoan({
-      memberId: '',
-      amount: '',
-      interestRate: '',
-      startDate: new Date().toISOString().split('T')[0],
-      remarks: '',
-      interestType: 'ACCUMULATED'
-    });
-  };
-
-  const handleCreateSubmit = async (e) => {
-    e.preventDefault();
-    if (!newLoan.memberId || !newLoan.amount || !newLoan.interestRate || !newLoan.startDate) return;
-
-    try {
-      const payload = {
-        memberId: Number(newLoan.memberId),
-        amount: Number(newLoan.amount),
-        interestRate: Number(newLoan.interestRate),
-        startDate: newLoan.startDate,
-        remarks: newLoan.remarks,
-        interestType: newLoan.interestType
-      };
-      await api.post('/loans', payload);
-      handleCreateClose();
-      fetchLoansAndMembers();
-    } catch (error) {
-      console.error('Failed to issue loan', error);
-    }
-  };
 
   // Handle Loan Closure
   const handleCloseOpen = (loan) => {
