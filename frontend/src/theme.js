@@ -148,6 +148,20 @@ const getDesignTokens = (mode) => ({
         },
       },
     },
+    MuiSelect: {
+      defaultProps: {
+        MenuProps: {
+          anchorOrigin: {
+            vertical: 'bottom',
+            horizontal: 'left',
+          },
+          transformOrigin: {
+            vertical: 'top',
+            horizontal: 'left',
+          },
+        },
+      },
+    },
   },
 });
 

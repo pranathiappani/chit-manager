@@ -86,6 +86,70 @@ public class MemberService {
         memberRepository.deleteById(id);
     }
 
+    public com.chitmanager.backend.dto.MemberDetailsDTO getMemberDetails(Long id) {
+        Member member = memberRepository.findById(id).orElseThrow(() -> new RuntimeException("Member not found"));
+        
+        List<com.chitmanager.backend.dto.ChitGroupDTO> chits = chitMemberRepository.findByMemberId(id).stream()
+                .map(cm -> {
+                    com.chitmanager.backend.models.ChitGroup cg = cm.getChitGroup();
+                    com.chitmanager.backend.dto.ChitGroupDTO dto = new com.chitmanager.backend.dto.ChitGroupDTO();
+                    dto.setId(cg.getId());
+                    dto.setName(cg.getName());
+                    dto.setTotalAmount(cg.getTotalAmount());
+                    dto.setDurationMonths(cg.getDurationMonths());
+                    dto.setMemberCount(cg.getMemberCount());
+                    dto.setMonthlyCollection(cg.getMonthlyCollection());
+                    dto.setStatus(cg.getStatus());
+                    dto.setStartMonth(cg.getStartMonth());
+                    dto.setStrategyType(cg.getStrategyType());
+                    dto.setCommissionPercentage(cg.getCommissionPercentage());
+                    dto.setBaseContribution(cg.getBaseContribution());
+                    dto.setPostPayoutContribution(cg.getPostPayoutContribution());
+                    dto.setPayoutAdjustmentValue(cg.getPayoutAdjustmentValue());
+                    dto.setEstimatedProfit(cg.getEstimatedProfit());
+                    dto.setActualProfit(cg.getActualProfit());
+                    dto.setProfitCalculated(cg.getProfitCalculated());
+                    dto.setCreatedAt(cg.getCreatedAt());
+                    return dto;
+                }).collect(Collectors.toList());
+
+        List<com.chitmanager.backend.dto.LoanDTO> loans = loanRepository.findByMemberId(id).stream()
+                .map(loan -> {
+                    com.chitmanager.backend.dto.LoanDTO dto = new com.chitmanager.backend.dto.LoanDTO();
+                    dto.setId(loan.getId());
+                    dto.setMemberId(loan.getMember().getId());
+                    dto.setMemberName(loan.getMember().getName());
+                    dto.setAmount(loan.getAmount());
+                    dto.setInterestRate(loan.getInterestRate());
+                    dto.setStartDate(loan.getStartDate());
+                    dto.setEndDate(loan.getEndDate());
+                    dto.setStatus(loan.getStatus());
+                    dto.setCalculatedInterest(loan.getCalculatedInterest());
+                    dto.setTotalRepayableAmount(loan.getTotalRepayableAmount());
+                    dto.setRemarks(loan.getRemarks());
+                    dto.setInterestType(loan.getInterestType() != null ? loan.getInterestType() : "ACCUMULATED");
+
+                    if (loan.getId() != null) {
+                        java.math.BigDecimal collected = loanPaymentRepository.findByLoanId(loan.getId()).stream()
+                                .filter(p -> "INTEREST".equals(p.getPaymentType()))
+                                .map(com.chitmanager.backend.models.LoanPayment::getAmount)
+                                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+                        dto.setCollectedInterest(collected.setScale(2, java.math.RoundingMode.HALF_UP));
+                    } else {
+                        dto.setCollectedInterest(java.math.BigDecimal.ZERO.setScale(2, java.math.RoundingMode.HALF_UP));
+                    }
+
+                    return dto;
+                }).collect(Collectors.toList());
+
+        com.chitmanager.backend.dto.MemberDetailsDTO details = new com.chitmanager.backend.dto.MemberDetailsDTO();
+        details.setMember(mapToDTO(member));
+        details.setChits(chits);
+        details.setLoans(loans);
+        
+        return details;
+    }
+
     private MemberDTO mapToDTO(Member member) {
         MemberDTO dto = new MemberDTO();
         dto.setId(member.getId());

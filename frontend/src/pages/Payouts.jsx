@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Card, CardContent, Typography, Grid, Table, TableBody, TableCell, TableHead, TableRow, MenuItem, Select, FormControl, InputLabel, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm, useWatch, Controller } from 'react-hook-form';
 import api from '../api/axiosConfig';
 import { Wallet, CheckCircle, Clock, TrendingUp } from 'lucide-react';
 import { formatMonth } from '../utils/dateUtils';
@@ -55,7 +55,7 @@ const Payouts = () => {
         api.get(`/payouts/chit/${chitId}`),
         api.get(`/chits/${chitId}/members`),
         api.get(`/payouts/chit/${chitId}/summary`),
-        api.get(`/chits/${chitId}/plans`)
+        api.get(`/payouts/chit/${chitId}/plans`)
       ]);
       setPayouts(payoutsRes.data || []);
       setMembers(membersRes.data || []);
@@ -95,7 +95,7 @@ const Payouts = () => {
     reset();
   };
 
-  const selectedChitData = chits.find(c => c.id === selectedChit);
+  const selectedChitData = chits.find(c => Number(c.id) === Number(selectedChit));
 
   const onSubmit = async (data) => {
     if (submitting) return;
@@ -171,15 +171,21 @@ const Payouts = () => {
 
       <Card sx={{ mb: 4, p: 2 }}>
         <FormControl sx={{ minWidth: 300 }}>
-          <InputLabel>Select Chit Group</InputLabel>
+          <InputLabel id="payouts-chit-label">Select Chit Group</InputLabel>
           <Select
+            labelId="payouts-chit-label"
             value={selectedChit}
             label="Select Chit Group"
             onChange={(e) => setSelectedChit(e.target.value)}
           >
-            {chits.map(chit => (
-              <MenuItem key={chit.id} value={chit.id}>{chit.name}</MenuItem>
-            ))}
+            <MenuItem value="" disabled>-- Select a Chit Group --</MenuItem>
+            {chits.length === 0 ? (
+              <MenuItem disabled value="">No chit groups found. Please create a chit group first.</MenuItem>
+            ) : (
+              chits.map(chit => (
+                <MenuItem key={chit.id} value={chit.id}>{chit.name}</MenuItem>
+              ))
+            )}
           </Select>
         </FormControl>
       </Card>
@@ -306,34 +312,62 @@ const Payouts = () => {
       )}
 
       {/* Record Payout Modal */}
-      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth disableEnforceFocus>
         <DialogTitle>Record New Payout</DialogTitle>
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogContent dividers>
             <Grid container spacing={2}>
               <Grid item xs={12}>
                 <FormControl fullWidth error={!!errors.memberId}>
-                  <InputLabel>Select Member</InputLabel>
-                  <Select
-                    label="Select Member"
-                    {...register('memberId', { required: 'Member is required' })}
+                  <InputLabel id="payout-member-label">Select Member</InputLabel>
+                  <Controller
+                    name="memberId"
+                    control={control}
+                    rules={{ required: 'Member is required' }}
                     defaultValue=""
-                  >
-                    {members.map(m => (
-                      <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
-                    ))}
-                  </Select>
+                    render={({ field }) => (
+                      <Select
+                        {...field}
+                        labelId="payout-member-label"
+                        label="Select Member"
+                      >
+                        <MenuItem value="" disabled>-- Select a Member --</MenuItem>
+                        {members.length === 0 ? (
+                          <MenuItem disabled value="">No members found in this chit group. Please assign members first.</MenuItem>
+                        ) : (
+                          members.map(m => (
+                            <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
+                          ))
+                        )}
+                      </Select>
+                    )}
+                  />
                 </FormControl>
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="For Month Number"
-                  {...register('payoutMonth', { required: 'Month is required', min: 1 })}
-                  error={!!errors.payoutMonth}
-                  helperText={errors.payoutMonth?.message}
-                />
+                <FormControl fullWidth error={!!errors.payoutMonth}>
+                  <InputLabel id="payout-month-label">For Month Number</InputLabel>
+                  <Controller
+                    name="payoutMonth"
+                    control={control}
+                    rules={{ required: 'Month is required' }}
+                    defaultValue=""
+                    render={({ field }) => (
+                      <Select
+                        {...field}
+                        labelId="payout-month-label"
+                        label="For Month Number"
+                      >
+                        <MenuItem value="" disabled>-- Select a Month --</MenuItem>
+                        {Array.from({ length: selectedChitData?.durationMonths || 0 }, (_, i) => i + 1).map(m => (
+                          <MenuItem key={m} value={m}>
+                            Month {m} ({formatMonth(selectedChitData?.startMonth, m)})
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    )}
+                  />
+                </FormControl>
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
@@ -342,6 +376,7 @@ const Payouts = () => {
                   label="Payout Date"
                   InputLabelProps={{ shrink: true }}
                   {...register('payoutDate', { required: 'Date is required' })}
+                  inputRef={register('payoutDate').ref}
                   error={!!errors.payoutDate}
                   helperText={errors.payoutDate?.message}
                 />
@@ -353,6 +388,7 @@ const Payouts = () => {
                   label="Actual Payout Amount (₹)"
                   helperText={errors.payoutAmount?.message || "Payout amount given to the winner for this month"}
                   {...register('payoutAmount', { required: 'Amount is required', min: 1 })}
+                  inputRef={register('payoutAmount').ref}
                   error={!!errors.payoutAmount}
                 />
               </Grid>
@@ -363,6 +399,7 @@ const Payouts = () => {
                   multiline
                   rows={2}
                   {...register('remarks')}
+                  inputRef={register('remarks').ref}
                 />
               </Grid>
             </Grid>

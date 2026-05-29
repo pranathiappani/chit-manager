@@ -66,7 +66,7 @@ const Collections = () => {
     }
   };
 
-  const selectedChitData = chits.find(c => c.id === selectedChit);
+  const selectedChitData = chits.find(c => Number(c.id) === Number(selectedChit));
   const monthsArray = selectedChitData ? Array.from({length: selectedChitData.durationMonths}, (_, i) => i + 1) : [];
 
   return (
@@ -77,25 +77,33 @@ const Collections = () => {
 
       <Card sx={{ mb: 4, p: 2, display: 'flex', gap: 3 }}>
         <FormControl sx={{ minWidth: 200 }}>
-          <InputLabel>Select Chit Group</InputLabel>
+          <InputLabel id="collections-chit-label">Select Chit Group</InputLabel>
           <Select
+            labelId="collections-chit-label"
             value={selectedChit}
             label="Select Chit Group"
             onChange={(e) => setSelectedChit(e.target.value)}
           >
-            {chits.map(chit => (
-              <MenuItem key={chit.id} value={chit.id}>{chit.name}</MenuItem>
-            ))}
+            <MenuItem value="" disabled>-- Select a Chit Group --</MenuItem>
+            {chits.length === 0 ? (
+              <MenuItem disabled value="">No chit groups found. Please create a chit group first.</MenuItem>
+            ) : (
+              chits.map(chit => (
+                <MenuItem key={chit.id} value={chit.id}>{chit.name}</MenuItem>
+              ))
+            )}
           </Select>
         </FormControl>
 
         <FormControl sx={{ minWidth: 200 }} disabled={!selectedChit}>
-          <InputLabel>Select Month</InputLabel>
+          <InputLabel id="collections-month-label">Select Month</InputLabel>
           <Select
+            labelId="collections-month-label"
             value={selectedMonth}
             label="Select Month"
             onChange={(e) => setSelectedMonth(e.target.value)}
           >
+            <MenuItem value="" disabled>-- Select a Month --</MenuItem>
             {monthsArray.map(m => (
               <MenuItem key={m} value={m}>Month {m} ({formatMonth(selectedChitData?.startMonth, m)})</MenuItem>
             ))}

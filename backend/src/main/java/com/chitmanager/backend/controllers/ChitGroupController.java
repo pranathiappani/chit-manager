@@ -44,6 +44,12 @@ public class ChitGroupController {
         return ResponseEntity.ok("Member added to chit group successfully");
     }
 
+    @DeleteMapping("/{chitId}/members/{memberId}")
+    public ResponseEntity<?> removeMemberFromChitGroup(@PathVariable Long chitId, @PathVariable Long memberId) {
+        chitGroupService.removeMemberFromChitGroup(chitId, memberId);
+        return ResponseEntity.ok("Member removed from chit group successfully");
+    }
+
     @GetMapping("/{chitId}/members")
     public ResponseEntity<List<MemberDTO>> getChitGroupMembers(@PathVariable Long chitId) {
         List<Member> members = chitGroupService.getChitGroupMembers(chitId);

@@ -26,6 +26,11 @@ public class MemberController {
         return ResponseEntity.ok(memberService.getMemberById(id));
     }
 
+    @GetMapping("/{id}/details")
+    public ResponseEntity<com.chitmanager.backend.dto.MemberDetailsDTO> getMemberDetails(@PathVariable Long id) {
+        return ResponseEntity.ok(memberService.getMemberDetails(id));
+    }
+
     @PostMapping
     public ResponseEntity<MemberDTO> createMember(@RequestBody MemberDTO memberDTO) {
         return ResponseEntity.ok(memberService.createMember(memberDTO));

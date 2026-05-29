@@ -27,4 +27,5 @@ public class ChitGroupDTO {
     private BigDecimal actualProfit;
     private Boolean profitCalculated;
     private List<PayoutPlanDTO> payoutPlans;
+    private Integer assignedMemberCount;
 }

@@ -87,6 +87,17 @@ public class ChitGroupService {
         chitMemberRepository.save(chitMember);
     }
 
+    @Transactional
+    public void removeMemberFromChitGroup(Long chitGroupId, Long memberId) {
+        List<ChitMember> memberships = chitMemberRepository.findByChitGroupId(chitGroupId);
+        ChitMember target = memberships.stream()
+                .filter(cm -> cm.getMember().getId().equals(memberId))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Member assignment not found in this chit group"));
+                
+        chitMemberRepository.delete(target);
+    }
+
     public List<Member> getChitGroupMembers(Long chitGroupId) {
         List<ChitMember> chitMembers = chitMemberRepository.findByChitGroupId(chitGroupId);
         return chitMembers.stream().map(ChitMember::getMember).collect(Collectors.toList());
@@ -129,6 +140,7 @@ public class ChitGroupService {
         dto.setEstimatedProfit(chitGroup.getEstimatedProfit());
         dto.setActualProfit(chitGroup.getActualProfit());
         dto.setProfitCalculated(chitGroup.getProfitCalculated());
+        dto.setAssignedMemberCount(chitMemberRepository.findByChitGroupId(chitGroup.getId()).size());
         return dto;
     }
 }

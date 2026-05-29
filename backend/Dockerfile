@@ -9,5 +9,6 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 COPY --from=build /app/target/backend-0.0.1-SNAPSHOT.jar app.jar
+ENV JAVA_TOOL_OPTIONS="-XX:+UseSerialGC -Xss512k -Xmx256m"
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

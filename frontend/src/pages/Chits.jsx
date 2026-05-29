@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Card, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Grid, IconButton, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
-import { useForm, useWatch } from 'react-hook-form';
-import { Plus, UserPlus, Settings2, Trash2 } from 'lucide-react';
+import { Box, Card, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Grid, IconButton, FormControl, InputLabel, Select, MenuItem, CircularProgress } from '@mui/material';
+import { useForm, useWatch, Controller } from 'react-hook-form';
+import { Plus, UserPlus, Settings2, Trash2, Users } from 'lucide-react';
 import api from '../api/axiosConfig';
 
 const Chits = () => {
@@ -17,6 +17,11 @@ const Chits = () => {
   const [selectedChitForPlan, setSelectedChitForPlan] = useState(null);
   const [payoutPlansState, setPayoutPlansState] = useState([]);
   const [selectedSourceChit, setSelectedSourceChit] = useState('');
+  
+  const [membersOpen, setMembersOpen] = useState(false);
+  const [viewingChit, setViewingChit] = useState(null);
+  const [assignedMembers, setAssignedMembers] = useState([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
 
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm({
     defaultValues: {
@@ -25,6 +30,44 @@ const Chits = () => {
   });
 
   const watchedStrategy = useWatch({ control, name: 'strategyType' });
+
+  const handleViewMembers = async (chit) => {
+    setViewingChit(chit);
+    setLoadingMembers(true);
+    setAssignedMembers([]);
+    setMembersOpen(true);
+    try {
+      const res = await api.get(`/chits/${chit.id}/members`);
+      setAssignedMembers(res.data || []);
+    } catch (error) {
+      console.error("Failed to load assigned members list", error);
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
+
+  const handleRemoveMember = async (memberId) => {
+    if (!viewingChit) return;
+    if (window.confirm("Are you sure you want to remove this member from the chit group?")) {
+      try {
+        await api.delete(`/chits/${viewingChit.id}/members/${memberId}`);
+        // Refresh assigned members in modal
+        const res = await api.get(`/chits/${viewingChit.id}/members`);
+        setAssignedMembers(res.data || []);
+        // Refresh chits in the main table to update assigned counts
+        fetchChits();
+      } catch (error) {
+        console.error("Failed to remove member from chit group", error);
+        alert("Could not remove the member assignment. Please try again.");
+      }
+    }
+  };
+
+  const handleMembersClose = () => {
+    setMembersOpen(false);
+    setViewingChit(null);
+    setAssignedMembers([]);
+  };
 
   const fetchChits = async () => {
     try {
@@ -234,11 +277,22 @@ const Chits = () => {
                   <TableCell sx={{ fontWeight: 500 }}>{chit.name}</TableCell>
                   <TableCell>₹{chit.totalAmount.toLocaleString()}</TableCell>
                   <TableCell>{chit.durationMonths} months</TableCell>
-                  <TableCell>{chit.memberCount}</TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={`${chit.assignedMemberCount || 0} / ${chit.memberCount} Assigned`}
+                      color={chit.assignedMemberCount === chit.memberCount ? 'success' : 'warning'}
+                      variant="outlined"
+                      size="small"
+                      sx={{ fontWeight: 'bold' }}
+                    />
+                  </TableCell>
                   <TableCell>
                     <Chip label={chit.status} color={chit.status === 'ACTIVE' ? 'success' : 'default'} size="small" />
                   </TableCell>
                   <TableCell>
+                    <IconButton size="small" color="info" onClick={() => handleViewMembers(chit)} title="View Assigned Members">
+                      <Users size={18} />
+                    </IconButton>
                     <IconButton size="small" color="primary" onClick={() => handleAssignOpen(chit.id)} title="Assign Member">
                       <UserPlus size={18} />
                     </IconButton>
@@ -257,7 +311,7 @@ const Chits = () => {
       </Card>
 
       {/* Create Chit Group Modal */}
-      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth disableEnforceFocus>
         <DialogTitle>Create New Chit Group</DialogTitle>
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogContent dividers>
@@ -267,6 +321,7 @@ const Chits = () => {
                   fullWidth
                   label="Chit Group Name"
                   {...register('name', { required: 'Name is required' })}
+                  inputRef={register('name').ref}
                   error={!!errors.name}
                   helperText={errors.name?.message}
                 />
@@ -277,6 +332,7 @@ const Chits = () => {
                   type="number"
                   label="Total Amount (₹)"
                   {...register('totalAmount', { required: 'Total amount is required', min: 1 })}
+                  inputRef={register('totalAmount').ref}
                   error={!!errors.totalAmount}
                   helperText={errors.totalAmount?.message}
                 />
@@ -287,6 +343,7 @@ const Chits = () => {
                   type="number"
                   label="Duration (Months)"
                   {...register('durationMonths', { required: 'Duration is required', min: 1 })}
+                  inputRef={register('durationMonths').ref}
                   error={!!errors.durationMonths}
                   helperText={errors.durationMonths?.message}
                 />
@@ -297,21 +354,29 @@ const Chits = () => {
                   type="number"
                   label="Number of Members"
                   {...register('memberCount', { required: 'Member count is required', min: 2 })}
+                  inputRef={register('memberCount').ref}
                   error={!!errors.memberCount}
                   helperText={errors.memberCount?.message}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <FormControl fullWidth>
-                  <InputLabel>Strategy Type</InputLabel>
-                  <Select
-                    label="Strategy Type"
-                    {...register('strategyType')}
+                  <InputLabel id="strategy-type-label">Strategy Type</InputLabel>
+                  <Controller
+                    name="strategyType"
+                    control={control}
                     defaultValue="FIXED_COMMISSION_PROGRESSIVE"
-                  >
-                    <MenuItem value="FIXED_COMMISSION_PROGRESSIVE">Fixed Commission Progressive</MenuItem>
-                    <MenuItem value="INCREMENTAL_CONTRIBUTION">Incremental Contribution</MenuItem>
-                  </Select>
+                    render={({ field }) => (
+                      <Select
+                        {...field}
+                        labelId="strategy-type-label"
+                        label="Strategy Type"
+                      >
+                        <MenuItem value="FIXED_COMMISSION_PROGRESSIVE">Fixed Commission Progressive</MenuItem>
+                        <MenuItem value="INCREMENTAL_CONTRIBUTION">Incremental Contribution</MenuItem>
+                      </Select>
+                    )}
+                  />
                 </FormControl>
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -320,17 +385,31 @@ const Chits = () => {
                   type="number"
                   label="Commission Percentage (%)"
                   {...register('commissionPercentage', { required: 'Commission is required', min: 0, max: 100 })}
+                  inputRef={register('commissionPercentage').ref}
                   error={!!errors.commissionPercentage}
                   helperText={errors.commissionPercentage?.message}
                 />
               </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  type="month"
+                  label="Start Month"
+                  InputLabelProps={{ shrink: true }}
+                  {...register('startMonth', { required: 'Start month is required' })}
+                  inputRef={register('startMonth').ref}
+                  error={!!errors.startMonth}
+                  helperText={errors.startMonth?.message}
+                />
+              </Grid>
               {watchedStrategy === 'FIXED_COMMISSION_PROGRESSIVE' && (
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12}>
                   <TextField
                     fullWidth
                     type="number"
                     label="Monthly Installment/Member (₹)"
                     {...register('monthlyCollection', { required: 'Installment amount is required', min: 1 })}
+                    inputRef={register('monthlyCollection').ref}
                     error={!!errors.monthlyCollection}
                     helperText={errors.monthlyCollection?.message}
                   />
@@ -344,6 +423,7 @@ const Chits = () => {
                       type="number"
                       label="Base Contribution (₹)"
                       {...register('baseContribution', { required: 'Base contribution is required', min: 1 })}
+                      inputRef={register('baseContribution').ref}
                       error={!!errors.baseContribution}
                       helperText={errors.baseContribution?.message}
                     />
@@ -354,33 +434,24 @@ const Chits = () => {
                       type="number"
                       label="Post Payout Contribution (₹)"
                       {...register('postPayoutContribution', { required: 'Post payout is required', min: 1 })}
+                      inputRef={register('postPayoutContribution').ref}
                       error={!!errors.postPayoutContribution}
                       helperText={errors.postPayoutContribution?.message}
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12}>
                     <TextField
                       fullWidth
                       type="number"
                       label="Payout Adjustment Value (₹)"
                       {...register('payoutAdjustmentValue', { required: 'Adjustment value is required', min: 0 })}
+                      inputRef={register('payoutAdjustmentValue').ref}
                       error={!!errors.payoutAdjustmentValue}
                       helperText={errors.payoutAdjustmentValue?.message}
                     />
                   </Grid>
                 </>
               )}
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  type="month"
-                  label="Start Month"
-                  InputLabelProps={{ shrink: true }}
-                  {...register('startMonth', { required: 'Start month is required' })}
-                  error={!!errors.startMonth}
-                  helperText={errors.startMonth?.message}
-                />
-              </Grid>
             </Grid>
           </DialogContent>
           <DialogActions sx={{ p: 2 }}>
@@ -393,21 +464,27 @@ const Chits = () => {
       </Dialog>
 
       {/* Assign Member Modal */}
-      <Dialog open={assignOpen} onClose={handleAssignClose} maxWidth="xs" fullWidth>
+      <Dialog open={assignOpen} onClose={handleAssignClose} maxWidth="xs" fullWidth disableEnforceFocus>
         <DialogTitle>Assign Member to Chit Group</DialogTitle>
         <DialogContent dividers>
           <FormControl fullWidth sx={{ mt: 1 }}>
-            <InputLabel>Select Member</InputLabel>
+            <InputLabel id="assign-member-label">Select Member</InputLabel>
             <Select
+              labelId="assign-member-label"
               value={selectedMemberToAssign}
               label="Select Member"
               onChange={(e) => setSelectedMemberToAssign(e.target.value)}
             >
-              {allMembers.map((member) => (
-                <MenuItem key={member.id} value={member.id}>
-                  {member.name} - {member.phone}
-                </MenuItem>
-              ))}
+              <MenuItem value="" disabled>-- Select a Member --</MenuItem>
+              {allMembers.length === 0 ? (
+                <MenuItem disabled value="">No members found. Please add a member first.</MenuItem>
+              ) : (
+                allMembers.map((member) => (
+                  <MenuItem key={member.id} value={member.id}>
+                    {member.name} - {member.phone}
+                  </MenuItem>
+                ))
+              )}
             </Select>
           </FormControl>
         </DialogContent>
@@ -420,7 +497,7 @@ const Chits = () => {
       </Dialog>
 
       {/* Configure Payout Plan Modal */}
-      <Dialog open={planOpen} onClose={handlePlanClose} maxWidth="md" fullWidth>
+      <Dialog open={planOpen} onClose={handlePlanClose} maxWidth="md" fullWidth disableEnforceFocus>
         <DialogTitle>
           Configure Payout Plans for {selectedChitForPlan?.name}
           <Typography variant="body2" color="text.secondary">
@@ -496,6 +573,62 @@ const Chits = () => {
             Save Configuration
           </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* View Assigned Members Dialog */}
+      <Dialog open={membersOpen} onClose={handleMembersClose} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1.5 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>Assigned Members ({assignedMembers.length} / {viewingChit?.memberCount})</Typography>
+          <Button onClick={handleMembersClose} color="inherit" size="small">Close</Button>
+        </DialogTitle>
+        <DialogContent dividers sx={{ backgroundColor: 'background.default', p: 3 }}>
+          {loadingMembers && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', py: 6, gap: 2 }}>
+              <CircularProgress size={30} />
+              <Typography color="text.secondary" variant="body2">Loading assigned members...</Typography>
+            </Box>
+          )}
+
+          {!loadingMembers && (
+            <Card sx={{ p: 0 }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ backgroundColor: 'action.hover' }}>
+                    <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>Member Name</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', px: 2 }}>Phone Number</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', pr: 3 }} align="right">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {assignedMembers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} align="center" sx={{ py: 3, color: 'text.secondary', fontStyle: 'italic' }}>
+                        No members assigned to this chit group yet.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    assignedMembers.map(m => (
+                      <TableRow key={m.id} hover>
+                        <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>{m.name}</TableCell>
+                        <TableCell sx={{ px: 2 }}>{m.phone}</TableCell>
+                        <TableCell sx={{ pr: 3 }} align="right">
+                          <IconButton 
+                            size="small" 
+                            color="error" 
+                            onClick={() => handleRemoveMember(m.id)} 
+                            title="Remove from Chit Group"
+                          >
+                            <Trash2 size={16} />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </Card>
+          )}
+        </DialogContent>
       </Dialog>
     </Box>
   );

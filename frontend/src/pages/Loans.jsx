@@ -49,9 +49,11 @@ const Loans = () => {
   const [interestPreview, setInterestPreview] = useState({ days: 0, interest: 0, collected: 0, remaining: 0, total: 0 });
 
   // Collect Interest Dialog State
-  const [collectInterestDate, setCollectInterestDate] = useState(new Date().toISOString().split('T')[0]);
-  const [interestAmount, setInterestAmount] = useState('');
-  const [interestRemarks, setInterestRemarks] = useState('');
+  const [interestPayment, setInterestPayment] = useState({
+    amount: '',
+    paymentDate: new Date().toISOString().split('T')[0],
+    remarks: ''
+  });
 
   // Log Payments State
   const [loggedPayments, setLoggedPayments] = useState([]);
@@ -508,26 +510,33 @@ const Loans = () => {
       </Card>
 
       {/* Dialog: Issue New Loan */}
-      <Dialog open={openCreate} onClose={handleCreateClose} maxWidth="sm" fullWidth>
+      <Dialog open={openCreate} onClose={handleCreateClose} maxWidth="sm" fullWidth disableEnforceFocus>
         <DialogTitle sx={{ fontWeight: 'bold' }}>Issue New Loan</DialogTitle>
         <form onSubmit={handleCreateSubmit}>
           <DialogContent dividers>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <FormControl fullWidth required>
-                  <InputLabel>Select Borrower Member</InputLabel>
-                  <Select
-                    label="Select Borrower Member"
-                    value={newLoan.memberId}
-                    onChange={(e) => setNewLoan({ ...newLoan, memberId: e.target.value })}
-                  >
-                    {members.map(m => (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 1 }}>
+              {/* Member Selection - FULL WIDTH (BIGGER!) */}
+              <FormControl fullWidth required>
+                <InputLabel id="member-select-label">Select Borrower Member</InputLabel>
+                <Select
+                  labelId="member-select-label"
+                  label="Select Borrower Member"
+                  value={newLoan.memberId}
+                  onChange={(e) => setNewLoan({ ...newLoan, memberId: e.target.value })}
+                >
+                  <MenuItem value="" disabled>-- Select Borrower Member --</MenuItem>
+                  {members.length === 0 ? (
+                    <MenuItem disabled value="">No members found. Please add a member first.</MenuItem>
+                  ) : (
+                    members.map(m => (
                       <MenuItem key={m.id} value={m.id}>{m.name} ({m.phone})</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6}>
+                    ))
+                  )}
+                </Select>
+              </FormControl>
+
+              {/* Principal Amount and Interest Rate - SIDE BY SIDE */}
+              <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
                 <TextField
                   fullWidth
                   required
@@ -535,9 +544,8 @@ const Loans = () => {
                   label="Principal Amount (₹)"
                   value={newLoan.amount}
                   onChange={(e) => setNewLoan({ ...newLoan, amount: e.target.value })}
+                  InputLabelProps={{ shrink: true }}
                 />
-              </Grid>
-              <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   required
@@ -547,12 +555,16 @@ const Loans = () => {
                   value={newLoan.interestRate}
                   onChange={(e) => setNewLoan({ ...newLoan, interestRate: e.target.value })}
                   helperText="e.g. 2.0 for 2% simple interest per month"
+                  InputLabelProps={{ shrink: true }}
                 />
-              </Grid>
-              <Grid item xs={12}>
-                <FormControl fullWidth required>
-                  <InputLabel>Interest Payment Type</InputLabel>
+              </Box>
+
+              {/* Interest Payment Type and Start Date - SIDE BY SIDE */}
+              <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                <FormControl fullWidth required sx={{ flex: 1 }}>
+                  <InputLabel id="interest-type-label">Interest Payment Type</InputLabel>
                   <Select
+                    labelId="interest-type-label"
                     label="Interest Payment Type"
                     value={newLoan.interestType}
                     onChange={(e) => setNewLoan({ ...newLoan, interestType: e.target.value })}
@@ -561,8 +573,6 @@ const Loans = () => {
                     <MenuItem value="MONTHLY">Monthly Collection (Interest collected month-by-month)</MenuItem>
                   </Select>
                 </FormControl>
-              </Grid>
-              <Grid item xs={12}>
                 <TextField
                   fullWidth
                   required
@@ -571,19 +581,21 @@ const Loans = () => {
                   InputLabelProps={{ shrink: true }}
                   value={newLoan.startDate}
                   onChange={(e) => setNewLoan({ ...newLoan, startDate: e.target.value })}
+                  sx={{ flex: 1 }}
                 />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Remarks / Collateral Details (Optional)"
-                  multiline
-                  rows={2}
-                  value={newLoan.remarks}
-                  onChange={(e) => setNewLoan({ ...newLoan, remarks: e.target.value })}
-                />
-              </Grid>
-            </Grid>
+              </Box>
+
+              {/* Remarks - FULL WIDTH */}
+              <TextField
+                fullWidth
+                label="Remarks / Collateral Details (Optional)"
+                multiline
+                rows={2}
+                value={newLoan.remarks}
+                onChange={(e) => setNewLoan({ ...newLoan, remarks: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Box>
           </DialogContent>
           <DialogActions sx={{ p: 2 }}>
             <Button onClick={handleCreateClose} color="inherit" disabled={submitting}>Cancel</Button>
