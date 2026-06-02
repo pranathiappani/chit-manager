@@ -31,4 +31,10 @@ public class CollectionController {
     public ResponseEntity<List<CollectionDTO>> getCollectionsForMember(@PathVariable Long memberId) {
         return ResponseEntity.ok(collectionService.getCollectionsForMember(memberId));
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteCollection(@PathVariable Long id) {
+        collectionService.deleteCollection(id);
+        return ResponseEntity.ok().build();
+    }
 }

@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
@@ -73,5 +74,10 @@ public class ChitGroupController {
     public ResponseEntity<?> completeChitGroup(@PathVariable Long id) {
         payoutService.completeChit(id);
         return ResponseEntity.ok("Chit group marked as completed and final profit calculated");
+    }
+
+    @GetMapping("/{id}/pending-dues")
+    public ResponseEntity<Map<String, Object>> getPendingDues(@PathVariable Long id) {
+        return ResponseEntity.ok(chitGroupService.getPendingDues(id));
     }
 }

@@ -1,8 +1,103 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Card, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Grid, IconButton, FormControl, InputLabel, Select, MenuItem, CircularProgress } from '@mui/material';
+import { Box, Card, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Grid, IconButton, FormControl, InputLabel, Select, MenuItem, CircularProgress, Collapse } from '@mui/material';
 import { useForm, useWatch, Controller } from 'react-hook-form';
-import { Plus, UserPlus, Settings2, Trash2, Users } from 'lucide-react';
+import { Plus, UserPlus, Settings2, Trash2, Users, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import api from '../api/axiosConfig';
+const ChitRow = ({ chit, handleViewMembers, handlePendingDuesOpen, handleAssignOpen, handlePlanOpen, handleDeleteChit }) => {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <React.Fragment>
+      <TableRow hover onClick={() => setOpen(!open)} sx={{ cursor: 'pointer', '& > *': { borderBottom: 'unset' } }}>
+        <TableCell sx={{ width: 50 }}>
+          <IconButton size="small" onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>
+            {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </IconButton>
+        </TableCell>
+        <TableCell sx={{ fontWeight: 500 }}>{chit.name}</TableCell>
+        <TableCell>₹{chit.totalAmount.toLocaleString()}</TableCell>
+        <TableCell>{chit.durationMonths} months</TableCell>
+        <TableCell>
+          <Chip 
+            label={`${chit.assignedMemberCount || 0} / ${chit.memberCount} Assigned`}
+            color={chit.assignedMemberCount === chit.memberCount ? 'success' : 'warning'}
+            variant="outlined"
+            size="small"
+            sx={{ fontWeight: 'bold' }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </TableCell>
+        <TableCell>
+          <Chip 
+            label={chit.status} 
+            color={chit.status === 'ACTIVE' ? 'success' : 'default'} 
+            size="small" 
+            onClick={(e) => e.stopPropagation()}
+          />
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
+          <Collapse in={open} timeout="auto" unmountOnExit>
+            <Box sx={{ margin: 2, p: 2, borderRadius: 2, backgroundColor: 'action.hover', border: '1px solid', borderColor: 'divider' }}>
+              <Typography variant="subtitle2" gutterBottom component="div" sx={{ fontWeight: 'bold', mb: 1.5 }}>
+                Group Actions & Management
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                <Button 
+                  variant="outlined" 
+                  color="info" 
+                  startIcon={<Users size={16} />} 
+                  onClick={(e) => { e.stopPropagation(); handleViewMembers(chit); }}
+                  size="small"
+                >
+                  View Members
+                </Button>
+                <Button 
+                  variant="outlined" 
+                  color="warning" 
+                  startIcon={<Clock size={16} />} 
+                  onClick={(e) => { e.stopPropagation(); handlePendingDuesOpen(chit); }}
+                  size="small"
+                >
+                  Pending Dues
+                </Button>
+                <Button 
+                  variant="outlined" 
+                  color="primary" 
+                  startIcon={<UserPlus size={16} />} 
+                  onClick={(e) => { e.stopPropagation(); handleAssignOpen(chit.id); }}
+                  size="small"
+                >
+                  Assign Member
+                </Button>
+                <Button 
+                  variant="outlined" 
+                  color="secondary" 
+                  startIcon={<Settings2 size={16} />} 
+                  onClick={(e) => { e.stopPropagation(); handlePlanOpen(chit); }}
+                  size="small"
+                >
+                  Payout Plans
+                </Button>
+                <Button 
+                  variant="outlined" 
+                  color="error" 
+                  startIcon={<Trash2 size={16} />} 
+                  onClick={(e) => { e.stopPropagation(); handleDeleteChit(chit.id); }}
+                  size="small"
+                  sx={{ ml: 'auto' }}
+                >
+                  Delete Chit Group
+                </Button>
+              </Box>
+            </Box>
+          </Collapse>
+        </TableCell>
+      </TableRow>
+    </React.Fragment>
+  );
+};
 
 const Chits = () => {
   const [chits, setChits] = useState([]);
@@ -22,6 +117,13 @@ const Chits = () => {
   const [viewingChit, setViewingChit] = useState(null);
   const [assignedMembers, setAssignedMembers] = useState([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+
+  const [pendingDuesOpen, setPendingDuesOpen] = useState(false);
+  const [selectedChitForPendingDues, setSelectedChitForPendingDues] = useState(null);
+  const [pendingDuesData, setPendingDuesData] = useState(null);
+  const [loadingPendingDues, setLoadingPendingDues] = useState(false);
+  const [selectedDues, setSelectedDues] = useState({});
+  const [recordingPayments, setRecordingPayments] = useState(false);
 
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm({
     defaultValues: {
@@ -67,6 +169,88 @@ const Chits = () => {
     setMembersOpen(false);
     setViewingChit(null);
     setAssignedMembers([]);
+  };
+
+  const handlePendingDuesOpen = async (chit) => {
+    setSelectedChitForPendingDues(chit);
+    setPendingDuesOpen(true);
+    setLoadingPendingDues(true);
+    setSelectedDues({});
+    try {
+      const res = await api.get(`/chits/${chit.id}/pending-dues`);
+      setPendingDuesData(res.data);
+    } catch (error) {
+      console.error("Failed to fetch pending dues", error);
+    } finally {
+      setLoadingPendingDues(false);
+    }
+  };
+
+  const handlePendingDuesClose = () => {
+    setPendingDuesOpen(false);
+    setSelectedChitForPendingDues(null);
+    setPendingDuesData(null);
+    setSelectedDues({});
+  };
+
+  const handleCheckboxChange = (memberId, monthNumber, amountDue) => {
+    const key = `${memberId}-${monthNumber}`;
+    setSelectedDues(prev => {
+      const next = { ...prev };
+      if (next[key]) {
+        delete next[key];
+      } else {
+        next[key] = { memberId, monthNumber, amountDue };
+      }
+      return next;
+    });
+  };
+
+  const handlePastDuesToggle = (memberId, pastPendingItems, isAllChecked) => {
+    setSelectedDues(prev => {
+      const next = { ...prev };
+      pastPendingItems.forEach(item => {
+        const key = `${memberId}-${item.monthNumber}`;
+        if (isAllChecked) {
+          delete next[key];
+        } else {
+          next[key] = { memberId, monthNumber: item.monthNumber, amountDue: item.amountDue };
+        }
+      });
+      return next;
+    });
+  };
+
+  const handleRecordPayments = async () => {
+    const duesToPay = Object.values(selectedDues);
+    if (duesToPay.length === 0) return;
+
+    setRecordingPayments(true);
+    try {
+      for (const due of duesToPay) {
+        const payload = {
+          chitGroupId: selectedChitForPendingDues.id,
+          memberId: due.memberId,
+          forMonth: due.monthNumber,
+          amountPaid: due.amountDue,
+          status: 'PAID',
+          paymentDate: new Date().toISOString().split('T')[0],
+          remarks: `Paid via Pending Dues tab (Month ${due.monthNumber})`
+        };
+        await api.post('/collections', payload);
+      }
+
+      const res = await api.get(`/chits/${selectedChitForPendingDues.id}/pending-dues`);
+      setPendingDuesData(res.data);
+      setSelectedDues({});
+      fetchChits();
+      alert("Successfully recorded payments for selected months!");
+    } catch (error) {
+      console.error("Failed to record payments", error);
+      alert("An error occurred while recording payments. Please check logs.");
+    } finally {
+      setRecordingPayments(false);
+    }
   };
 
   const fetchChits = async () => {
@@ -256,12 +440,12 @@ const Chits = () => {
         <Table>
           <TableHead>
             <TableRow sx={{ backgroundColor: 'background.default' }}>
+              <TableCell sx={{ width: 50 }} />
               <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Total Amount</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Duration</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Members</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -273,37 +457,15 @@ const Chits = () => {
               </TableRow>
             ) : (
               chits.map((chit) => (
-                <TableRow key={chit.id}>
-                  <TableCell sx={{ fontWeight: 500 }}>{chit.name}</TableCell>
-                  <TableCell>₹{chit.totalAmount.toLocaleString()}</TableCell>
-                  <TableCell>{chit.durationMonths} months</TableCell>
-                  <TableCell>
-                    <Chip 
-                      label={`${chit.assignedMemberCount || 0} / ${chit.memberCount} Assigned`}
-                      color={chit.assignedMemberCount === chit.memberCount ? 'success' : 'warning'}
-                      variant="outlined"
-                      size="small"
-                      sx={{ fontWeight: 'bold' }}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Chip label={chit.status} color={chit.status === 'ACTIVE' ? 'success' : 'default'} size="small" />
-                  </TableCell>
-                  <TableCell>
-                    <IconButton size="small" color="info" onClick={() => handleViewMembers(chit)} title="View Assigned Members">
-                      <Users size={18} />
-                    </IconButton>
-                    <IconButton size="small" color="primary" onClick={() => handleAssignOpen(chit.id)} title="Assign Member">
-                      <UserPlus size={18} />
-                    </IconButton>
-                    <IconButton size="small" color="secondary" onClick={() => handlePlanOpen(chit)} title="Configure Payout Plans">
-                      <Settings2 size={18} />
-                    </IconButton>
-                    <IconButton size="small" color="error" onClick={() => handleDeleteChit(chit.id)} title="Delete Chit Group">
-                      <Trash2 size={18} />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
+                <ChitRow
+                  key={chit.id}
+                  chit={chit}
+                  handleViewMembers={handleViewMembers}
+                  handlePendingDuesOpen={handlePendingDuesOpen}
+                  handleAssignOpen={handleAssignOpen}
+                  handlePlanOpen={handlePlanOpen}
+                  handleDeleteChit={handleDeleteChit}
+                />
               ))
             )}
           </TableBody>
@@ -629,6 +791,151 @@ const Chits = () => {
             </Card>
           )}
         </DialogContent>
+      </Dialog>
+
+      {/* View Pending Dues Dialog */}
+      <Dialog open={pendingDuesOpen} onClose={handlePendingDuesClose} maxWidth="md" fullWidth disableEnforceFocus>
+        <DialogTitle sx={{ fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1.5 }}>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>Pending Dues Summary</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Group: {selectedChitForPendingDues?.name} | Current Month: Month {pendingDuesData?.currentMonth}
+            </Typography>
+          </Box>
+          <Button onClick={handlePendingDuesClose} color="inherit" size="small">Close</Button>
+        </DialogTitle>
+        <DialogContent dividers sx={{ backgroundColor: 'background.default', p: 3 }}>
+          {loadingPendingDues && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', py: 6, gap: 2 }}>
+              <CircularProgress size={30} />
+              <Typography color="text.secondary" variant="body2">Loading pending dues...</Typography>
+            </Box>
+          )}
+
+          {!loadingPendingDues && pendingDuesData && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {/* Summary Stats */}
+              <Card sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'background.paper' }}>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">Total Outstanding Dues (till Month {pendingDuesData.currentMonth})</Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'error.main' }}>
+                    ₹{pendingDuesData.totalPendingAmount?.toLocaleString()}
+                  </Typography>
+                </Box>
+                <Box sx={{ textAlign: 'right' }}>
+                  <Typography variant="subtitle2" color="text.secondary">Total Selected to Pay</Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                    ₹{Object.values(selectedDues).reduce((sum, d) => sum + Number(d.amountDue), 0).toLocaleString()}
+                  </Typography>
+                </Box>
+              </Card>
+
+              {/* Members List */}
+              <Card sx={{ p: 0 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow sx={{ backgroundColor: 'action.hover' }}>
+                      <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>Member Name</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Phone</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Pending Months & Due Amount</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold', pr: 3 }} align="right">Total Pending</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {(!pendingDuesData.membersPending || pendingDuesData.membersPending.length === 0) ? (
+                      <TableRow>
+                        <TableCell colSpan={4} align="center" sx={{ py: 4, color: 'success.main', fontWeight: 'bold' }}>
+                          🎉 No pending dues for this chit group up to Month {pendingDuesData.currentMonth}!
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      pendingDuesData.membersPending.map(member => (
+                        <TableRow key={member.memberId} hover>
+                          <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>{member.memberName}</TableCell>
+                          <TableCell>{member.memberPhone || '-'}</TableCell>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, py: 1 }}>
+                              {(() => {
+                                const currentMonthNum = pendingDuesData.currentMonth;
+                                const pastPending = member.pendingMonths.filter(pm => pm.monthNumber < currentMonthNum);
+                                const currentOrFuturePending = member.pendingMonths.filter(pm => pm.monthNumber >= currentMonthNum);
+                                
+                                const pastTotal = pastPending.reduce((sum, pm) => sum + pm.amountDue, 0);
+                                const isPastChecked = pastPending.length > 0 && pastPending.every(pm => !!selectedDues[`${member.memberId}-${pm.monthNumber}`]);
+                                
+                                return (
+                                  <>
+                                    {pastPending.length > 0 && (
+                                      <Chip
+                                        label={`Past Dues: ₹${pastTotal.toLocaleString()}`}
+                                        color={isPastChecked ? "primary" : "default"}
+                                        variant={isPastChecked ? "contained" : "outlined"}
+                                        onClick={() => handlePastDuesToggle(member.memberId, pastPending, isPastChecked)}
+                                        sx={{ 
+                                          cursor: 'pointer',
+                                          fontSize: '0.8rem',
+                                          fontWeight: isPastChecked ? 'bold' : 'normal',
+                                          borderColor: 'warning.light',
+                                          '&:hover': {
+                                            backgroundColor: isPastChecked ? 'primary.dark' : 'action.hover'
+                                          }
+                                        }}
+                                      />
+                                    )}
+                                    {currentOrFuturePending.map(pm => {
+                                      const key = `${member.memberId}-${pm.monthNumber}`;
+                                      const isChecked = !!selectedDues[key];
+                                      return (
+                                        <Chip
+                                          key={pm.monthNumber}
+                                          label={`M${pm.monthNumber}: ₹${pm.amountDue.toLocaleString()}`}
+                                          color={isChecked ? "primary" : "default"}
+                                          variant={isChecked ? "contained" : "outlined"}
+                                          onClick={() => handleCheckboxChange(member.memberId, pm.monthNumber, pm.amountDue)}
+                                          sx={{ 
+                                            cursor: 'pointer',
+                                            fontSize: '0.8rem',
+                                            fontWeight: isChecked ? 'bold' : 'normal',
+                                            '&:hover': {
+                                              backgroundColor: isChecked ? 'primary.dark' : 'action.hover'
+                                            }
+                                          }}
+                                        />
+                                      );
+                                    })}
+                                  </>
+                                );
+                              })()}
+                            </Box>
+                          </TableCell>
+                          <TableCell sx={{ pr: 3, fontWeight: 'bold', color: 'error.main' }} align="right">
+                            ₹{member.totalPending?.toLocaleString()}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </Card>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2, justifyContent: 'space-between' }}>
+          <Typography variant="body2" color="text.secondary" sx={{ pl: 2 }}>
+            Click on the Month Chips to select/deselect them for payment.
+          </Typography>
+          <Box>
+            <Button onClick={handlePendingDuesClose} color="inherit" sx={{ mr: 1 }}>Cancel</Button>
+            <Button 
+              onClick={handleRecordPayments} 
+              variant="contained" 
+              color="primary"
+              disabled={recordingPayments || Object.keys(selectedDues).length === 0}
+            >
+              {recordingPayments ? "Recording Payments..." : `Mark Selected Dues as Paid (${Object.keys(selectedDues).length})`}
+            </Button>
+          </Box>
+        </DialogActions>
       </Dialog>
     </Box>
   );

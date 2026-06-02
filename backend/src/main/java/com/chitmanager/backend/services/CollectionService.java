@@ -62,6 +62,14 @@ public class CollectionService {
                 .stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
+    @Transactional
+    public void deleteCollection(Long id) {
+        if (!collectionRepository.existsById(id)) {
+            throw new RuntimeException("Collection record not found");
+        }
+        collectionRepository.deleteById(id);
+    }
+
     private CollectionDTO mapToDTO(Collection collection) {
         CollectionDTO dto = new CollectionDTO();
         dto.setId(collection.getId());
