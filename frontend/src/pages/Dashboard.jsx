@@ -71,13 +71,13 @@ const Dashboard = () => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 3 }}>
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>Dashboard Overview</Typography>
         <Button 
           variant="outlined" 
           color="error" 
           onClick={handleClearAllData}
-          sx={{ fontWeight: 'bold', borderWidth: '1.5px', '&:hover': { borderWidth: '1.5px', backgroundColor: 'error.main', color: '#fff' } }}
+          sx={{ width: { xs: '100%', sm: 'auto' }, fontWeight: 'bold', borderWidth: '1.5px', '&:hover': { borderWidth: '1.5px', backgroundColor: 'error.main', color: '#fff' } }}
         >
           Reset Database
         </Button>

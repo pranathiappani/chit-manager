@@ -146,15 +146,15 @@ const Payouts = () => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 3 }}>
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>Dynamic Payout Management</Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{ display: 'flex', gap: 2, width: { xs: '100%', sm: 'auto' }, flexDirection: { xs: 'column', sm: 'row' } }}>
           {selectedChitData && selectedChitData.status !== 'COMPLETED' && (
             <Button 
               variant="contained" 
               color="error"
               onClick={handleCompleteChit}
-              sx={{ fontWeight: 'bold' }}
+              sx={{ fontWeight: 'bold', width: { xs: '100%', sm: 'auto' } }}
             >
               Chit Ended
             </Button>
@@ -163,6 +163,7 @@ const Payouts = () => {
             variant="contained" 
             disabled={!selectedChit || (selectedChitData && selectedChitData.status === 'COMPLETED')} 
             onClick={handleOpen}
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
           >
             Record New Payout
           </Button>
@@ -170,7 +171,7 @@ const Payouts = () => {
       </Box>
 
       <Card sx={{ mb: 4, p: 2 }}>
-        <FormControl sx={{ minWidth: 300 }}>
+        <FormControl sx={{ minWidth: { xs: '100%', sm: 300 } }}>
           <InputLabel id="payouts-chit-label">Select Chit Group</InputLabel>
           <Select
             labelId="payouts-chit-label"
@@ -265,48 +266,50 @@ const Payouts = () => {
         <Card>
           <CardContent>
             <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>Payout History</Typography>
-            <Table>
-              <TableHead>
-                <TableRow sx={{ backgroundColor: 'background.default' }}>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Month</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Member</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Payout Amount</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Payout Date</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Remarks</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {payouts.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-                      No payouts recorded yet for this group.
-                    </TableCell>
+            <Box sx={{ overflowX: 'auto' }}>
+              <Table>
+                <TableHead>
+                  <TableRow sx={{ backgroundColor: 'background.default' }}>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Month</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Member</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Payout Amount</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Payout Date</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Remarks</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
                   </TableRow>
-                ) : (
-                  payouts.map((payout) => (
-                    <TableRow key={payout.id}>
-                      <TableCell>Month {payout.payoutMonth} ({formatMonth(selectedChitData?.startMonth, payout.payoutMonth)})</TableCell>
-                      <TableCell sx={{ fontWeight: 500 }}>{payout.memberName}</TableCell>
-                      <TableCell>₹{payout.payoutAmount?.toLocaleString()}</TableCell>
-                      <TableCell>{payout.payoutDate}</TableCell>
-                      <TableCell>{payout.remarks || '-'}</TableCell>
-                      <TableCell>
-                        <Button 
-                          variant="contained" 
-                          color="error" 
-                          size="small" 
-                          onClick={() => handleDeletePayout(payout.id)}
-                          sx={{ fontWeight: 'bold' }}
-                        >
-                          Delete
-                        </Button>
+                </TableHead>
+                <TableBody>
+                  {payouts.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
+                        No payouts recorded yet for this group.
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    payouts.map((payout) => (
+                      <TableRow key={payout.id}>
+                        <TableCell>Month {payout.payoutMonth} ({formatMonth(selectedChitData?.startMonth, payout.payoutMonth)})</TableCell>
+                        <TableCell sx={{ fontWeight: 500 }}>{payout.memberName}</TableCell>
+                        <TableCell>₹{payout.payoutAmount?.toLocaleString()}</TableCell>
+                        <TableCell>{payout.payoutDate}</TableCell>
+                        <TableCell>{payout.remarks || '-'}</TableCell>
+                        <TableCell>
+                          <Button 
+                            variant="contained" 
+                            color="error" 
+                            size="small" 
+                            onClick={() => handleDeletePayout(payout.id)}
+                            sx={{ fontWeight: 'bold' }}
+                          >
+                            Delete
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </Box>
           </CardContent>
         </Card>
       )}

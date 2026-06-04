@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Card, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Grid, IconButton, FormControl, InputLabel, Select, MenuItem, CircularProgress, Collapse } from '@mui/material';
 import { useForm, useWatch, Controller } from 'react-hook-form';
-import { Plus, UserPlus, Settings2, Trash2, Users, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, UserPlus, Settings2, Trash2, Users, Clock, ChevronDown, ChevronUp, Receipt } from 'lucide-react';
 import api from '../api/axiosConfig';
-const ChitRow = ({ chit, handleViewMembers, handlePendingDuesOpen, handleAssignOpen, handlePlanOpen, handleDeleteChit }) => {
+const ChitRow = ({ chit, handleViewMembers, handlePendingDuesOpen, handleAssignOpen, handlePlanOpen, handleDeleteChit, handleLedgerOpen }) => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -82,6 +82,15 @@ const ChitRow = ({ chit, handleViewMembers, handlePendingDuesOpen, handleAssignO
                 </Button>
                 <Button 
                   variant="outlined" 
+                  color="success" 
+                  startIcon={<Receipt size={16} />} 
+                  onClick={(e) => { e.stopPropagation(); handleLedgerOpen(chit); }}
+                  size="small"
+                >
+                  Chit Ledger
+                </Button>
+                <Button 
+                  variant="outlined" 
                   color="error" 
                   startIcon={<Trash2 size={16} />} 
                   onClick={(e) => { e.stopPropagation(); handleDeleteChit(chit.id); }}
@@ -124,6 +133,12 @@ const Chits = () => {
   const [loadingPendingDues, setLoadingPendingDues] = useState(false);
   const [selectedDues, setSelectedDues] = useState({});
   const [recordingPayments, setRecordingPayments] = useState(false);
+  const [pendingDuesRemarks, setPendingDuesRemarks] = useState('');
+
+  const [ledgerOpen, setLedgerOpen] = useState(false);
+  const [selectedChitForLedger, setSelectedChitForLedger] = useState(null);
+  const [ledgerData, setLedgerData] = useState([]);
+  const [loadingLedger, setLoadingLedger] = useState(false);
 
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm({
     defaultValues: {
@@ -191,6 +206,7 @@ const Chits = () => {
     setSelectedChitForPendingDues(null);
     setPendingDuesData(null);
     setSelectedDues({});
+    setPendingDuesRemarks('');
   };
 
   const handleCheckboxChange = (memberId, monthNumber, amountDue) => {
@@ -235,7 +251,7 @@ const Chits = () => {
           amountPaid: due.amountDue,
           status: 'PAID',
           paymentDate: new Date().toISOString().split('T')[0],
-          remarks: `Paid via Pending Dues tab (Month ${due.monthNumber})`
+          remarks: pendingDuesRemarks.trim() || `Paid via Pending Dues tab (Month ${due.monthNumber})`
         };
         await api.post('/collections', payload);
       }
@@ -243,6 +259,7 @@ const Chits = () => {
       const res = await api.get(`/chits/${selectedChitForPendingDues.id}/pending-dues`);
       setPendingDuesData(res.data);
       setSelectedDues({});
+      setPendingDuesRemarks('');
       fetchChits();
       alert("Successfully recorded payments for selected months!");
     } catch (error) {
@@ -251,6 +268,46 @@ const Chits = () => {
     } finally {
       setRecordingPayments(false);
     }
+  };
+
+  const handleLedgerOpen = async (chit) => {
+    setSelectedChitForLedger(chit);
+    setLedgerOpen(true);
+    setLoadingLedger(true);
+    setLedgerData([]);
+    try {
+      const res = await api.get(`/collections/chit/${chit.id}`);
+      const groups = {};
+      const list = res.data || [];
+      list.forEach(c => {
+        if (c.status === 'PAID') {
+          const key = `${c.memberId}-${c.paymentDate}-${c.remarks || ''}`;
+          if (!groups[key]) {
+            groups[key] = {
+              memberName: c.memberName,
+              paymentDate: c.paymentDate,
+              remarks: c.remarks || '-',
+              totalAmountPaid: 0,
+              clearedMonths: []
+            };
+          }
+          groups[key].totalAmountPaid += c.amountPaid;
+          groups[key].clearedMonths.push(c.forMonth);
+        }
+      });
+      const sorted = Object.values(groups).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+      setLedgerData(sorted);
+    } catch (error) {
+      console.error("Failed to load chit ledger data", error);
+    } finally {
+      setLoadingLedger(false);
+    }
+  };
+
+  const handleLedgerClose = () => {
+    setLedgerOpen(false);
+    setSelectedChitForLedger(null);
+    setLedgerData([]);
   };
 
   const fetchChits = async () => {
@@ -429,47 +486,50 @@ const Chits = () => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 3 }}>
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>Chit Groups</Typography>
-        <Button variant="contained" startIcon={<Plus size={20} />} onClick={handleOpen}>
+        <Button variant="contained" startIcon={<Plus size={20} />} onClick={handleOpen} sx={{ width: { xs: '100%', sm: 'auto' } }}>
           Create Chit Group
         </Button>
       </Box>
 
       <Card>
-        <Table>
-          <TableHead>
-            <TableRow sx={{ backgroundColor: 'background.default' }}>
-              <TableCell sx={{ width: 50 }} />
-              <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Total Amount</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Duration</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Members</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {chits.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-                  No chit groups found. Create one to get started!
-                </TableCell>
+        <Box sx={{ overflowX: 'auto' }}>
+          <Table>
+            <TableHead>
+              <TableRow sx={{ backgroundColor: 'background.default' }}>
+                <TableCell sx={{ width: 50 }} />
+                <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Total Amount</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Duration</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Members</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
               </TableRow>
-            ) : (
-              chits.map((chit) => (
-                <ChitRow
-                  key={chit.id}
-                  chit={chit}
-                  handleViewMembers={handleViewMembers}
-                  handlePendingDuesOpen={handlePendingDuesOpen}
-                  handleAssignOpen={handleAssignOpen}
-                  handlePlanOpen={handlePlanOpen}
-                  handleDeleteChit={handleDeleteChit}
-                />
-              ))
-            )}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {chits.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
+                    No chit groups found. Create one to get started!
+                  </TableCell>
+                </TableRow>
+              ) : (
+                chits.map((chit) => (
+                  <ChitRow
+                    key={chit.id}
+                    chit={chit}
+                    handleViewMembers={handleViewMembers}
+                    handlePendingDuesOpen={handlePendingDuesOpen}
+                    handleAssignOpen={handleAssignOpen}
+                    handlePlanOpen={handlePlanOpen}
+                    handleDeleteChit={handleDeleteChit}
+                    handleLedgerOpen={handleLedgerOpen}
+                  />
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </Box>
       </Card>
 
       {/* Create Chit Group Modal */}
@@ -815,14 +875,14 @@ const Chits = () => {
           {!loadingPendingDues && pendingDuesData && (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               {/* Summary Stats */}
-              <Card sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'background.paper' }}>
+              <Card sx={{ p: 2, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, backgroundColor: 'background.paper' }}>
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary">Total Outstanding Dues (till Month {pendingDuesData.currentMonth})</Typography>
                   <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'error.main' }}>
                     ₹{pendingDuesData.totalPendingAmount?.toLocaleString()}
                   </Typography>
                 </Box>
-                <Box sx={{ textAlign: 'right' }}>
+                <Box sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
                   <Typography variant="subtitle2" color="text.secondary">Total Selected to Pay</Typography>
                   <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'success.main' }}>
                     ₹{Object.values(selectedDues).reduce((sum, d) => sum + Number(d.amountDue), 0).toLocaleString()}
@@ -920,12 +980,21 @@ const Chits = () => {
             </Box>
           )}
         </DialogContent>
-        <DialogActions sx={{ p: 2, justifyContent: 'space-between' }}>
-          <Typography variant="body2" color="text.secondary" sx={{ pl: 2 }}>
-            Click on the Month Chips to select/deselect them for payment.
-          </Typography>
-          <Box>
-            <Button onClick={handlePendingDuesClose} color="inherit" sx={{ mr: 1 }}>Cancel</Button>
+        <DialogActions sx={{ p: 2, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start', flexGrow: 1, width: { xs: '100%', sm: 'auto' } }}>
+            <Typography variant="body2" color="text.secondary" sx={{ pl: 1 }}>
+              Click on the Month Chips to select/deselect them for payment.
+            </Typography>
+            <TextField
+              size="small"
+              placeholder="Payment method / remarks (e.g. PhonePe, Cash)"
+              value={pendingDuesRemarks}
+              onChange={(e) => setPendingDuesRemarks(e.target.value)}
+              sx={{ width: { xs: '100%', sm: 320 }, mt: 0.5 }}
+            />
+          </Box>
+          <Box sx={{ display: 'flex', gap: 1, width: { xs: '100%', sm: 'auto' }, justifyContent: 'flex-end' }}>
+            <Button onClick={handlePendingDuesClose} color="inherit">Cancel</Button>
             <Button 
               onClick={handleRecordPayments} 
               variant="contained" 
@@ -935,6 +1004,107 @@ const Chits = () => {
               {recordingPayments ? "Recording Payments..." : `Mark Selected Dues as Paid (${Object.keys(selectedDues).length})`}
             </Button>
           </Box>
+        </DialogActions>
+      </Dialog>
+
+      {/* Chit Ledger Dialog */}
+      <Dialog 
+        open={ledgerOpen} 
+        onClose={handleLedgerClose} 
+        maxWidth="md" 
+        fullWidth 
+        disableEnforceFocus
+      >
+        <DialogTitle sx={{ fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1.5 }}>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>Chit Ledger</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Group: {selectedChitForLedger?.name}
+            </Typography>
+          </Box>
+          <Button onClick={handleLedgerClose} color="inherit" size="small">Close</Button>
+        </DialogTitle>
+        <DialogContent dividers sx={{ backgroundColor: 'background.default', p: 3 }}>
+          {loadingLedger && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', py: 6, gap: 2 }}>
+              <CircularProgress size={30} />
+              <Typography color="text.secondary" variant="body2">Loading ledger history...</Typography>
+            </Box>
+          )}
+
+          {!loadingLedger && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {/* Summary Stats */}
+              <Card sx={{ p: 2, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, backgroundColor: 'background.paper' }}>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">Total Collected Amount</Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                    ₹{ledgerData.reduce((sum, entry) => sum + entry.totalAmountPaid, 0).toLocaleString()}
+                  </Typography>
+                </Box>
+                <Box sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
+                  <Typography variant="subtitle2" color="text.secondary">Total Transactions</Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                    {ledgerData.length}
+                  </Typography>
+                </Box>
+              </Card>
+
+              {/* Transactions List */}
+              <Card sx={{ p: 0 }}>
+                <Box sx={{ overflowX: 'auto' }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ backgroundColor: 'action.hover' }}>
+                        <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>Payment Date</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Member Name</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Cleared Months</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Remarks</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold', pr: 3 }} align="right">Amount Paid</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {ledgerData.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary', fontStyle: 'italic' }}>
+                            No payment records found for this chit group yet.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        ledgerData.map((entry, idx) => (
+                          <TableRow key={idx} hover>
+                            <TableCell sx={{ pl: 3 }}>{entry.paymentDate || '-'}</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>{entry.memberName}</TableCell>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, py: 0.5 }}>
+                                {entry.clearedMonths.sort((a, b) => a - b).map(m => (
+                                  <Chip
+                                    key={m}
+                                    label={`Month ${m}`}
+                                    size="small"
+                                    color="secondary"
+                                    variant="outlined"
+                                    sx={{ fontSize: '0.75rem', height: 20 }}
+                                  />
+                                ))}
+                              </Box>
+                            </TableCell>
+                            <TableCell>{entry.remarks || '-'}</TableCell>
+                            <TableCell sx={{ pr: 3, fontWeight: 'bold', color: 'success.main' }} align="right">
+                              ₹{entry.totalAmountPaid.toLocaleString()}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </Box>
+              </Card>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={handleLedgerClose} variant="contained" color="primary">Done</Button>
         </DialogActions>
       </Dialog>
     </Box>

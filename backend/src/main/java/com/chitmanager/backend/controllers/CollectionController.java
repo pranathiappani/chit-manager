@@ -32,6 +32,11 @@ public class CollectionController {
         return ResponseEntity.ok(collectionService.getCollectionsForMember(memberId));
     }
 
+    @GetMapping("/chit/{chitGroupId}")
+    public ResponseEntity<List<CollectionDTO>> getCollectionsForChit(@PathVariable Long chitGroupId) {
+        return ResponseEntity.ok(collectionService.getCollectionsForChit(chitGroupId));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteCollection(@PathVariable Long id) {
         collectionService.deleteCollection(id);

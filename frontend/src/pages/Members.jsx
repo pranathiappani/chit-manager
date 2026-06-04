@@ -11,6 +11,7 @@ const Members = () => {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedMemberDetails, setSelectedMemberDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [editingMember, setEditingMember] = useState(null);
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
 
   const fetchMembers = async () => {
@@ -26,10 +27,36 @@ const Members = () => {
     fetchMembers();
   }, []);
 
-  const handleOpen = () => setOpen(true);
+  const handleOpen = () => {
+    setEditingMember(null);
+    reset({
+      name: '',
+      phone: '',
+      joiningDate: '',
+      nominee: '',
+      guarantor: '',
+      address: ''
+    });
+    setOpen(true);
+  };
+
   const handleClose = () => {
     setOpen(false);
+    setEditingMember(null);
     reset();
+  };
+
+  const handleEditClick = (member) => {
+    setEditingMember(member);
+    reset({
+      name: member.name,
+      phone: member.phone,
+      joiningDate: member.joiningDate,
+      nominee: member.nominee || '',
+      guarantor: member.guarantor || '',
+      address: member.address || ''
+    });
+    setOpen(true);
   };
 
   const handleViewDetails = async (memberId) => {
@@ -55,11 +82,15 @@ const Members = () => {
     if (submitting) return;
     setSubmitting(true);
     try {
-      await api.post('/members', data);
+      if (editingMember) {
+        await api.put(`/members/${editingMember.id}`, data);
+      } else {
+        await api.post('/members', data);
+      }
       handleClose();
       fetchMembers(); // Refresh list
     } catch (error) {
-      console.error('Failed to create member', error);
+      console.error('Failed to save member', error);
     } finally {
       setSubmitting(false);
     }
@@ -79,53 +110,55 @@ const Members = () => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 3 }}>
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>Members Directory</Typography>
-        <Button variant="contained" startIcon={<Plus size={20} />} onClick={handleOpen}>
+        <Button variant="contained" startIcon={<Plus size={20} />} onClick={handleOpen} sx={{ width: { xs: '100%', sm: 'auto' } }}>
           Add Member
         </Button>
       </Box>
 
       <Card>
-        <Table>
-          <TableHead>
-            <TableRow sx={{ backgroundColor: 'background.default' }}>
-              <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Phone</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Address</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Joining Date</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {members.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
-                  No members found. Add your first member!
-                </TableCell>
+        <Box sx={{ overflowX: 'auto' }}>
+          <Table>
+            <TableHead>
+              <TableRow sx={{ backgroundColor: 'background.default' }}>
+                <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Phone</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Address</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Joining Date</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
               </TableRow>
-            ) : (
-              members.map((member) => (
-                <TableRow key={member.id}>
-                  <TableCell>{member.name}</TableCell>
-                  <TableCell>{member.phone}</TableCell>
-                  <TableCell>{member.address}</TableCell>
-                  <TableCell>{member.joiningDate}</TableCell>
-                  <TableCell>
-                    <IconButton size="small" color="info" onClick={() => handleViewDetails(member.id)} title="View Portfolio"><Eye size={18} /></IconButton>
-                    <IconButton size="small" color="primary"><Edit2 size={18} /></IconButton>
-                    <IconButton size="small" color="error" onClick={() => handleDeleteMember(member.id)} title="Delete Member"><Trash2 size={18} /></IconButton>
+            </TableHead>
+            <TableBody>
+              {members.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                    No members found. Add your first member!
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                members.map((member) => (
+                  <TableRow key={member.id}>
+                    <TableCell>{member.name}</TableCell>
+                    <TableCell>{member.phone}</TableCell>
+                    <TableCell>{member.address}</TableCell>
+                    <TableCell>{member.joiningDate}</TableCell>
+                    <TableCell>
+                      <IconButton size="small" color="info" onClick={() => handleViewDetails(member.id)} title="View Portfolio"><Eye size={18} /></IconButton>
+                      <IconButton size="small" color="primary" onClick={() => handleEditClick(member)} title="Edit Member"><Edit2 size={18} /></IconButton>
+                      <IconButton size="small" color="error" onClick={() => handleDeleteMember(member.id)} title="Delete Member"><Trash2 size={18} /></IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </Box>
       </Card>
 
       {/* Add Member Modal */}
       <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-        <DialogTitle>Add New Member</DialogTitle>
+        <DialogTitle>{editingMember ? 'Edit Member Details' : 'Add New Member'}</DialogTitle>
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogContent dividers>
             <Grid container spacing={2}>
@@ -192,7 +225,7 @@ const Members = () => {
           <DialogActions sx={{ p: 2 }}>
             <Button onClick={handleClose} color="inherit" disabled={submitting}>Cancel</Button>
             <Button type="submit" variant="contained" color="primary" disabled={submitting}>
-              {submitting ? 'Adding...' : 'Add Member'}
+              {editingMember ? (submitting ? 'Saving...' : 'Save Changes') : (submitting ? 'Adding...' : 'Add Member')}
             </Button>
           </DialogActions>
         </form>

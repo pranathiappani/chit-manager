@@ -1,7 +1,7 @@
-
+import React, { useState } from 'react';
 import { Box, Toolbar, AppBar, Typography, IconButton, useTheme } from '@mui/material';
 import { Outlet, useLocation } from 'react-router-dom';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun, Menu } from 'lucide-react';
 import Sidebar from './Sidebar';
 import { useThemeStore } from '../store';
 
@@ -11,6 +11,11 @@ const Layout = () => {
   const location = useLocation();
   const theme = useTheme();
   const { mode, toggleMode } = useThemeStore();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
   
   const titleMap = {
     '/': 'Dashboard',
@@ -18,6 +23,7 @@ const Layout = () => {
     '/chits': 'Chit Groups',
     '/collections': 'Monthly Collections',
     '/payouts': 'Payout Management',
+    '/loans': 'Loans Issued',
   };
 
   const currentTitle = titleMap[location.pathname] || 'ChitManager';
@@ -27,8 +33,8 @@ const Layout = () => {
       <AppBar
         position="fixed"
         sx={{
-          width: `calc(100% - ${drawerWidth}px)`,
-          ml: `${drawerWidth}px`,
+          width: { md: `calc(100% - ${drawerWidth}px)` },
+          ml: { md: `${drawerWidth}px` },
           backgroundColor: 'background.paper',
           color: 'text.primary',
           boxShadow: 'none',
@@ -37,6 +43,14 @@ const Layout = () => {
         }}
       >
         <Toolbar>
+          <IconButton
+            color="inherit"
+            edge="start"
+            onClick={handleDrawerToggle}
+            sx={{ mr: 2, display: { md: 'none' } }}
+          >
+            <Menu size={20} />
+          </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 600, flexGrow: 1 }}>
             {currentTitle}
           </Typography>
@@ -45,10 +59,16 @@ const Layout = () => {
           </IconButton>
         </Toolbar>
       </AppBar>
-      <Sidebar />
+      <Sidebar mobileOpen={mobileOpen} handleDrawerToggle={handleDrawerToggle} />
       <Box
         component="main"
-        sx={{ flexGrow: 1, p: 3, backgroundColor: 'background.default', minHeight: '100vh' }}
+        sx={{ 
+          flexGrow: 1, 
+          p: { xs: 2, sm: 3 }, 
+          backgroundColor: 'background.default', 
+          minHeight: '100vh',
+          width: { md: `calc(100% - ${drawerWidth}px)` }
+        }}
       >
         <Toolbar />
         <div className="fade-in-up">

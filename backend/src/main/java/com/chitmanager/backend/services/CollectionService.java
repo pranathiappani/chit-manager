@@ -57,6 +57,11 @@ public class CollectionService {
                 .stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
+    public List<CollectionDTO> getCollectionsForChit(Long chitGroupId) {
+        return collectionRepository.findByChitGroupId(chitGroupId)
+                .stream().map(this::mapToDTO).collect(Collectors.toList());
+    }
+
     public List<CollectionDTO> getCollectionsForMember(Long memberId) {
         return collectionRepository.findByMemberId(memberId)
                 .stream().map(this::mapToDTO).collect(Collectors.toList());

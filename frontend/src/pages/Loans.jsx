@@ -305,9 +305,9 @@ const Loans = () => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 3 }}>
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>Loans Issued Ledger</Typography>
-        <Button variant="contained" onClick={handleCreateOpen}>
+        <Button variant="contained" onClick={handleCreateOpen} sx={{ width: { xs: '100%', sm: 'auto' } }}>
           Issue New Loan
         </Button>
       </Box>
