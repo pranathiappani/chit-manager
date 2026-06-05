@@ -781,42 +781,44 @@ const Chits = () => {
               </Typography>
             </Box>
           )}
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 'bold' }}>Month Number</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Payout Amount (₹)</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Number of Persons</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {payoutPlansState.map((plan, index) => (
-                <TableRow key={index}>
-                  <TableCell>Month {plan.monthNumber}</TableCell>
-                  <TableCell>
-                    <TextField
-                      type="number"
-                      size="small"
-                      value={plan.payoutAmount}
-                      onChange={(e) => handlePlanChange(index, 'payoutAmount', e.target.value)}
-                      placeholder="e.g. 95000"
-                      fullWidth
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <TextField
-                      type="number"
-                      size="small"
-                      value={plan.expectedPayoutCount}
-                      onChange={(e) => handlePlanChange(index, 'expectedPayoutCount', e.target.value)}
-                      inputProps={{ min: 1 }}
-                      fullWidth
-                    />
-                  </TableCell>
+          <Box sx={{ overflowX: 'auto', width: '100%' }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Month Number</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Payout Amount (₹)</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Number of Persons</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHead>
+              <TableBody>
+                {payoutPlansState.map((plan, index) => (
+                  <TableRow key={index}>
+                    <TableCell>Month {plan.monthNumber}</TableCell>
+                    <TableCell>
+                      <TextField
+                        type="number"
+                        size="small"
+                        value={plan.payoutAmount}
+                        onChange={(e) => handlePlanChange(index, 'payoutAmount', e.target.value)}
+                        placeholder="e.g. 95000"
+                        fullWidth
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        type="number"
+                        size="small"
+                        value={plan.expectedPayoutCount}
+                        onChange={(e) => handlePlanChange(index, 'expectedPayoutCount', e.target.value)}
+                        inputProps={{ min: 1 }}
+                        fullWidth
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Box>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
           <Button onClick={handlePlanClose} color="inherit">Cancel</Button>
@@ -842,41 +844,43 @@ const Chits = () => {
 
           {!loadingMembers && (
             <Card sx={{ p: 0 }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ backgroundColor: 'action.hover' }}>
-                    <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>Member Name</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', px: 2 }}>Phone Number</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', pr: 3 }} align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {assignedMembers.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={3} align="center" sx={{ py: 3, color: 'text.secondary', fontStyle: 'italic' }}>
-                        No members assigned to this chit group yet.
-                      </TableCell>
+              <Box sx={{ overflowX: 'auto', width: '100%' }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow sx={{ backgroundColor: 'action.hover' }}>
+                      <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>Member Name</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold', px: 2 }}>Phone Number</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold', pr: 3 }} align="right">Actions</TableCell>
                     </TableRow>
-                  ) : (
-                    assignedMembers.map(m => (
-                      <TableRow key={m.id} hover>
-                        <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>{m.name}</TableCell>
-                        <TableCell sx={{ px: 2 }}>{m.phone}</TableCell>
-                        <TableCell sx={{ pr: 3 }} align="right">
-                          <IconButton 
-                            size="small" 
-                            color="error" 
-                            onClick={() => handleRemoveMember(m.id)} 
-                            title="Remove from Chit Group"
-                          >
-                            <Trash2 size={16} />
-                          </IconButton>
+                  </TableHead>
+                  <TableBody>
+                    {assignedMembers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={3} align="center" sx={{ py: 3, color: 'text.secondary', fontStyle: 'italic' }}>
+                          No members assigned to this chit group yet.
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    ) : (
+                      assignedMembers.map(m => (
+                        <TableRow key={m.id} hover>
+                          <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>{m.name}</TableCell>
+                          <TableCell sx={{ px: 2 }}>{m.phone}</TableCell>
+                          <TableCell sx={{ pr: 3 }} align="right">
+                            <IconButton 
+                              size="small" 
+                              color="error" 
+                              onClick={() => handleRemoveMember(m.id)} 
+                              title="Remove from Chit Group"
+                            >
+                              <Trash2 size={16} />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </Box>
             </Card>
           )}
         </DialogContent>
@@ -921,90 +925,92 @@ const Chits = () => {
 
               {/* Members List */}
               <Card sx={{ p: 0 }}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow sx={{ backgroundColor: 'action.hover' }}>
-                      <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>Member Name</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold' }}>Phone</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold' }}>Pending Months & Due Amount</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold', pr: 3 }} align="right">Total Pending</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {(!pendingDuesData.membersPending || pendingDuesData.membersPending.length === 0) ? (
-                      <TableRow>
-                        <TableCell colSpan={4} align="center" sx={{ py: 4, color: 'success.main', fontWeight: 'bold' }}>
-                          🎉 No pending dues for this chit group up to Month {pendingDuesData.currentMonth}!
-                        </TableCell>
+                <Box sx={{ overflowX: 'auto', width: '100%' }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ backgroundColor: 'action.hover' }}>
+                        <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>Member Name</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Phone</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Pending Months & Due Amount</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold', pr: 3 }} align="right">Total Pending</TableCell>
                       </TableRow>
-                    ) : (
-                      pendingDuesData.membersPending.map(member => (
-                        <TableRow key={member.memberId} hover>
-                          <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>{member.memberName}</TableCell>
-                          <TableCell>{member.memberPhone || '-'}</TableCell>
-                          <TableCell>
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, py: 1 }}>
-                              {(() => {
-                                const currentMonthNum = pendingDuesData.currentMonth;
-                                const pastPending = member.pendingMonths.filter(pm => pm.monthNumber < currentMonthNum);
-                                const currentOrFuturePending = member.pendingMonths.filter(pm => pm.monthNumber >= currentMonthNum);
-                                
-                                const pastTotal = pastPending.reduce((sum, pm) => sum + pm.amountDue, 0);
-                                const isPastChecked = pastPending.length > 0 && pastPending.every(pm => !!selectedDues[`${member.memberId}-${pm.monthNumber}`]);
-                                
-                                return (
-                                  <>
-                                    {pastPending.length > 0 && (
-                                      <Chip
-                                        label={`Past Dues: ₹${pastTotal.toLocaleString()}`}
-                                        color={isPastChecked ? "primary" : "default"}
-                                        variant={isPastChecked ? "contained" : "outlined"}
-                                        onClick={() => handlePastDuesToggle(member.memberId, pastPending, isPastChecked)}
-                                        sx={{ 
-                                          cursor: 'pointer',
-                                          fontSize: '0.8rem',
-                                          fontWeight: isPastChecked ? 'bold' : 'normal',
-                                          borderColor: 'warning.light',
-                                          '&:hover': {
-                                            backgroundColor: isPastChecked ? 'primary.dark' : 'action.hover'
-                                          }
-                                        }}
-                                      />
-                                    )}
-                                    {currentOrFuturePending.map(pm => {
-                                      const key = `${member.memberId}-${pm.monthNumber}`;
-                                      const isChecked = !!selectedDues[key];
-                                      return (
+                    </TableHead>
+                    <TableBody>
+                      {(!pendingDuesData.membersPending || pendingDuesData.membersPending.length === 0) ? (
+                        <TableRow>
+                          <TableCell colSpan={4} align="center" sx={{ py: 4, color: 'success.main', fontWeight: 'bold' }}>
+                            🎉 No pending dues for this chit group up to Month {pendingDuesData.currentMonth}!
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        pendingDuesData.membersPending.map(member => (
+                          <TableRow key={member.memberId} hover>
+                            <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>{member.memberName}</TableCell>
+                            <TableCell>{member.memberPhone || '-'}</TableCell>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, py: 1 }}>
+                                {(() => {
+                                  const currentMonthNum = pendingDuesData.currentMonth;
+                                  const pastPending = member.pendingMonths.filter(pm => pm.monthNumber < currentMonthNum);
+                                  const currentOrFuturePending = member.pendingMonths.filter(pm => pm.monthNumber >= currentMonthNum);
+                                  
+                                  const pastTotal = pastPending.reduce((sum, pm) => sum + pm.amountDue, 0);
+                                  const isPastChecked = pastPending.length > 0 && pastPending.every(pm => !!selectedDues[`${member.memberId}-${pm.monthNumber}`]);
+                                  
+                                  return (
+                                    <>
+                                      {pastPending.length > 0 && (
                                         <Chip
-                                          key={pm.monthNumber}
-                                          label={`M${pm.monthNumber}: ₹${pm.amountDue.toLocaleString()}`}
-                                          color={isChecked ? "primary" : "default"}
-                                          variant={isChecked ? "contained" : "outlined"}
-                                          onClick={() => handleCheckboxChange(member.memberId, pm.monthNumber, pm.amountDue)}
+                                          label={`Past Dues: ₹${pastTotal.toLocaleString()}`}
+                                          color={isPastChecked ? "primary" : "default"}
+                                          variant={isPastChecked ? "contained" : "outlined"}
+                                          onClick={() => handlePastDuesToggle(member.memberId, pastPending, isPastChecked)}
                                           sx={{ 
                                             cursor: 'pointer',
                                             fontSize: '0.8rem',
-                                            fontWeight: isChecked ? 'bold' : 'normal',
+                                            fontWeight: isPastChecked ? 'bold' : 'normal',
+                                            borderColor: 'warning.light',
                                             '&:hover': {
-                                              backgroundColor: isChecked ? 'primary.dark' : 'action.hover'
+                                              backgroundColor: isPastChecked ? 'primary.dark' : 'action.hover'
                                             }
                                           }}
                                         />
-                                      );
-                                    })}
-                                  </>
-                                );
-                              })()}
-                            </Box>
-                          </TableCell>
-                          <TableCell sx={{ pr: 3, fontWeight: 'bold', color: 'error.main' }} align="right">
-                            ₹{member.totalPending?.toLocaleString()}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
+                                      )}
+                                      {currentOrFuturePending.map(pm => {
+                                        const key = `${member.memberId}-${pm.monthNumber}`;
+                                        const isChecked = !!selectedDues[key];
+                                        return (
+                                          <Chip
+                                            key={pm.monthNumber}
+                                            label={`M${pm.monthNumber}: ₹${pm.amountDue.toLocaleString()}`}
+                                            color={isChecked ? "primary" : "default"}
+                                            variant={isChecked ? "contained" : "outlined"}
+                                            onClick={() => handleCheckboxChange(member.memberId, pm.monthNumber, pm.amountDue)}
+                                            sx={{ 
+                                              cursor: 'pointer',
+                                              fontSize: '0.8rem',
+                                              fontWeight: isChecked ? 'bold' : 'normal',
+                                              '&:hover': {
+                                                backgroundColor: isChecked ? 'primary.dark' : 'action.hover'
+                                              }
+                                            }}
+                                          />
+                                        );
+                                      })}
+                                    </>
+                                  );
+                                })()}
+                              </Box>
+                            </TableCell>
+                            <TableCell sx={{ pr: 3, fontWeight: 'bold', color: 'error.main' }} align="right">
+                              ₹{member.totalPending?.toLocaleString()}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </Box>
               </Card>
             </Box>
           )}

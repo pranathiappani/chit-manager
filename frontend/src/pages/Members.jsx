@@ -381,43 +381,45 @@ const Members = () => {
                   <Wallet size={18} style={{ color: '#4f46e5' }} /> Chit Group Memberships ({selectedMemberDetails.chits.length})
                 </Typography>
                 <Card sx={{ p: 0 }}>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow sx={{ backgroundColor: 'action.hover' }}>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Chit Group</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Total Value</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Duration</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Start Month</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {selectedMemberDetails.chits.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={5} align="center" sx={{ py: 3, color: 'text.secondary', fontStyle: 'italic' }}>
-                            Not assigned to any chit groups yet.
-                          </TableCell>
+                  <Box sx={{ overflowX: 'auto', width: '100%' }}>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow sx={{ backgroundColor: 'action.hover' }}>
+                          <TableCell sx={{ fontWeight: 'bold' }}>Chit Group</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }}>Total Value</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }}>Duration</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }}>Start Month</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
                         </TableRow>
-                      ) : (
-                        selectedMemberDetails.chits.map(chit => (
-                          <TableRow key={chit.id} hover>
-                            <TableCell sx={{ fontWeight: 'bold' }}>{chit.name}</TableCell>
-                            <TableCell>₹{chit.totalAmount?.toLocaleString()}</TableCell>
-                            <TableCell>{chit.durationMonths} months</TableCell>
-                            <TableCell>{chit.startMonth}</TableCell>
-                            <TableCell>
-                              <Chip 
-                                label={chit.status} 
-                                color={chit.status === 'ACTIVE' ? 'success' : 'default'} 
-                                size="small" 
-                                sx={{ fontSize: '0.7rem', fontWeight: 'bold', height: 20 }}
-                              />
+                      </TableHead>
+                      <TableBody>
+                        {selectedMemberDetails.chits.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} align="center" sx={{ py: 3, color: 'text.secondary', fontStyle: 'italic' }}>
+                              Not assigned to any chit groups yet.
                             </TableCell>
                           </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
+                        ) : (
+                          selectedMemberDetails.chits.map(chit => (
+                            <TableRow key={chit.id} hover>
+                              <TableCell sx={{ fontWeight: 'bold' }}>{chit.name}</TableCell>
+                              <TableCell>₹{chit.totalAmount?.toLocaleString()}</TableCell>
+                              <TableCell>{chit.durationMonths} months</TableCell>
+                              <TableCell>{chit.startMonth}</TableCell>
+                              <TableCell>
+                                <Chip 
+                                  label={chit.status} 
+                                  color={chit.status === 'ACTIVE' ? 'success' : 'default'} 
+                                  size="small" 
+                                  sx={{ fontSize: '0.7rem', fontWeight: 'bold', height: 20 }}
+                                />
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </Box>
                 </Card>
               </Box>
 
@@ -427,57 +429,59 @@ const Members = () => {
                   <Landmark size={18} style={{ color: '#10b981' }} /> Loans Issued Portfolio ({selectedMemberDetails.loans.length})
                 </Typography>
                 <Card sx={{ p: 0 }}>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow sx={{ backgroundColor: 'action.hover' }}>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Principal</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Interest Rate</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Interest Type</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Start Date</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>End Date</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Interest Collected</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {selectedMemberDetails.loans.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={7} align="center" sx={{ py: 3, color: 'text.secondary', fontStyle: 'italic' }}>
-                            No loans issued to this member yet.
-                          </TableCell>
+                  <Box sx={{ overflowX: 'auto', width: '100%' }}>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow sx={{ backgroundColor: 'action.hover' }}>
+                          <TableCell sx={{ fontWeight: 'bold' }}>Principal</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }}>Interest Rate</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }}>Interest Type</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }}>Start Date</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }}>End Date</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }}>Interest Collected</TableCell>
+                          <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
                         </TableRow>
-                      ) : (
-                        selectedMemberDetails.loans.map(loan => (
-                          <TableRow key={loan.id} hover>
-                            <TableCell sx={{ fontWeight: 'bold' }}>₹{loan.amount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
-                            <TableCell>{loan.interestRate}% / month</TableCell>
-                            <TableCell>
-                              <Chip 
-                                label={loan.interestType === 'MONTHLY' ? 'Monthly' : 'Accumulated'} 
-                                size="small" 
-                                variant="outlined"
-                                color={loan.interestType === 'MONTHLY' ? 'secondary' : 'default'}
-                                sx={{ fontSize: '0.65rem', height: 18, fontWeight: 'bold' }}
-                              />
-                            </TableCell>
-                            <TableCell>{loan.startDate}</TableCell>
-                            <TableCell>{loan.endDate || '-'}</TableCell>
-                            <TableCell sx={{ color: 'success.main', fontWeight: 'bold' }}>
-                              ₹{loan.collectedInterest?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                            </TableCell>
-                            <TableCell>
-                              <Chip 
-                                label={loan.status} 
-                                color={loan.status === 'ACTIVE' ? 'primary' : 'success'} 
-                                size="small" 
-                                sx={{ fontSize: '0.7rem', fontWeight: 'bold', height: 20 }}
-                              />
+                      </TableHead>
+                      <TableBody>
+                        {selectedMemberDetails.loans.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={7} align="center" sx={{ py: 3, color: 'text.secondary', fontStyle: 'italic' }}>
+                              No loans issued to this member yet.
                             </TableCell>
                           </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
+                        ) : (
+                          selectedMemberDetails.loans.map(loan => (
+                            <TableRow key={loan.id} hover>
+                              <TableCell sx={{ fontWeight: 'bold' }}>₹{loan.amount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                              <TableCell>{loan.interestRate}% / month</TableCell>
+                              <TableCell>
+                                <Chip 
+                                  label={loan.interestType === 'MONTHLY' ? 'Monthly' : 'Accumulated'} 
+                                  size="small" 
+                                  variant="outlined"
+                                  color={loan.interestType === 'MONTHLY' ? 'secondary' : 'default'}
+                                  sx={{ fontSize: '0.65rem', height: 18, fontWeight: 'bold' }}
+                                />
+                              </TableCell>
+                              <TableCell>{loan.startDate}</TableCell>
+                              <TableCell>{loan.endDate || '-'}</TableCell>
+                              <TableCell sx={{ color: 'success.main', fontWeight: 'bold' }}>
+                                ₹{loan.collectedInterest?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                              </TableCell>
+                              <TableCell>
+                                <Chip 
+                                  label={loan.status} 
+                                  color={loan.status === 'ACTIVE' ? 'primary' : 'success'} 
+                                  size="small" 
+                                  sx={{ fontSize: '0.7rem', fontWeight: 'bold', height: 20 }}
+                                />
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </Box>
                 </Card>
               </Box>
             </Box>
