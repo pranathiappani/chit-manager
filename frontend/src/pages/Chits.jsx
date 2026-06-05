@@ -238,28 +238,28 @@ const Chits = () => {
     setPendingDuesRemarks('');
   };
 
-  const handleCheckboxChange = (memberId, monthNumber, amountDue) => {
-    const key = `${memberId}-${monthNumber}`;
+  const handleCheckboxChange = (chitMemberId, monthNumber, amountDue, memberId) => {
+    const key = `${chitMemberId}-${monthNumber}`;
     setSelectedDues(prev => {
       const next = { ...prev };
       if (next[key]) {
         delete next[key];
       } else {
-        next[key] = { memberId, monthNumber, amountDue };
+        next[key] = { chitMemberId, memberId, monthNumber, amountDue };
       }
       return next;
     });
   };
 
-  const handlePastDuesToggle = (memberId, pastPendingItems, isAllChecked) => {
+  const handlePastDuesToggle = (chitMemberId, pastPendingItems, isAllChecked, memberId) => {
     setSelectedDues(prev => {
       const next = { ...prev };
       pastPendingItems.forEach(item => {
-        const key = `${memberId}-${item.monthNumber}`;
+        const key = `${chitMemberId}-${item.monthNumber}`;
         if (isAllChecked) {
           delete next[key];
         } else {
-          next[key] = { memberId, monthNumber: item.monthNumber, amountDue: item.amountDue };
+          next[key] = { chitMemberId, memberId, monthNumber: item.monthNumber, amountDue: item.amountDue };
         }
       });
       return next;
@@ -276,6 +276,7 @@ const Chits = () => {
         const payload = {
           chitGroupId: selectedChitForPendingDues.id,
           memberId: due.memberId,
+          chitMemberId: due.chitMemberId,
           forMonth: due.monthNumber,
           amountPaid: due.amountDue,
           status: 'PAID',
@@ -862,14 +863,16 @@ const Chits = () => {
                       </TableRow>
                     ) : (
                       assignedMembers.map(m => (
-                        <TableRow key={m.id} hover>
-                          <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>{m.name}</TableCell>
+                        <TableRow key={m.chitMemberId || m.id} hover>
+                          <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>
+                            {m.name} {m.slotIndex ? `(Spot #${m.slotIndex})` : ''}
+                          </TableCell>
                           <TableCell sx={{ px: 2 }}>{m.phone}</TableCell>
                           <TableCell sx={{ pr: 3 }} align="right">
                             <IconButton 
                               size="small" 
                               color="error" 
-                              onClick={() => handleRemoveMember(m.id)} 
+                              onClick={() => handleRemoveMember(m.chitMemberId || m.id)} 
                               title="Remove from Chit Group"
                             >
                               <Trash2 size={16} />
@@ -936,35 +939,65 @@ const Chits = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {(!pendingDuesData.membersPending || pendingDuesData.membersPending.length === 0) ? (
-                        <TableRow>
-                          <TableCell colSpan={4} align="center" sx={{ py: 4, color: 'success.main', fontWeight: 'bold' }}>
-                            🎉 No pending dues for this chit group up to Month {pendingDuesData.currentMonth}!
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        pendingDuesData.membersPending.map(member => (
-                          <TableRow key={member.memberId} hover>
-                            <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>{member.memberName}</TableCell>
-                            <TableCell>{member.memberPhone || '-'}</TableCell>
+                      {(() => {
+                        const groupedPending = [];
+                        const groupedMap = {};
+                        (pendingDuesData.membersPending || []).forEach(m => {
+                          if (!groupedMap[m.memberId]) {
+                            groupedMap[m.memberId] = {
+                              memberId: m.memberId,
+                              memberName: m.memberName,
+                              memberPhone: m.memberPhone,
+                              totalPending: 0,
+                              slots: []
+                            };
+                            groupedPending.push(groupedMap[m.memberId]);
+                          }
+                          groupedMap[m.memberId].slots.push(m);
+                          groupedMap[m.memberId].totalPending += m.totalPending;
+                        });
+
+                        if (groupedPending.length === 0) {
+                          return (
+                            <TableRow>
+                              <TableCell colSpan={4} align="center" sx={{ py: 4, color: 'success.main', fontWeight: 'bold' }}>
+                                🎉 No pending dues for this chit group up to Month {pendingDuesData.currentMonth}!
+                              </TableCell>
+                            </TableRow>
+                          );
+                        }
+
+                        return groupedPending.map((groupedMember) => (
+                          <TableRow key={groupedMember.memberId} hover>
+                            <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>
+                              {groupedMember.memberName}
+                              {groupedMember.slots.length > 1 && (
+                                <Typography variant="caption" display="block" color="text.secondary">
+                                  ({groupedMember.slots.length} spots)
+                                </Typography>
+                              )}
+                            </TableCell>
+                            <TableCell>{groupedMember.memberPhone || '-'}</TableCell>
                             <TableCell>
-                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, py: 1 }}>
-                                {(() => {
+                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, py: 1 }}>
+                                {groupedMember.slots.map((slot, sIdx) => {
+                                  const label = groupedMember.slots.length > 1 ? `Spot #${sIdx + 1}: ` : '';
                                   const currentMonthNum = pendingDuesData.currentMonth;
-                                  const pastPending = member.pendingMonths.filter(pm => pm.monthNumber < currentMonthNum);
-                                  const currentOrFuturePending = member.pendingMonths.filter(pm => pm.monthNumber >= currentMonthNum);
+                                  const pastPending = slot.pendingMonths.filter(pm => pm.monthNumber < currentMonthNum);
+                                  const currentOrFuturePending = slot.pendingMonths.filter(pm => pm.monthNumber >= currentMonthNum);
                                   
                                   const pastTotal = pastPending.reduce((sum, pm) => sum + pm.amountDue, 0);
-                                  const isPastChecked = pastPending.length > 0 && pastPending.every(pm => !!selectedDues[`${member.memberId}-${pm.monthNumber}`]);
+                                  const isPastChecked = pastPending.length > 0 && pastPending.every(pm => !!selectedDues[`${slot.chitMemberId}-${pm.monthNumber}`]);
                                   
                                   return (
-                                    <>
+                                    <Box key={slot.chitMemberId} sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                      {label && <Typography variant="caption" sx={{ fontWeight: 'bold', minWidth: 60 }}>{label}</Typography>}
                                       {pastPending.length > 0 && (
                                         <Chip
                                           label={`Past Dues: ₹${pastTotal.toLocaleString()}`}
                                           color={isPastChecked ? "primary" : "default"}
                                           variant={isPastChecked ? "contained" : "outlined"}
-                                          onClick={() => handlePastDuesToggle(member.memberId, pastPending, isPastChecked)}
+                                          onClick={() => handlePastDuesToggle(slot.chitMemberId, pastPending, isPastChecked, groupedMember.memberId)}
                                           sx={{ 
                                             cursor: 'pointer',
                                             fontSize: '0.8rem',
@@ -977,7 +1010,7 @@ const Chits = () => {
                                         />
                                       )}
                                       {currentOrFuturePending.map(pm => {
-                                        const key = `${member.memberId}-${pm.monthNumber}`;
+                                        const key = `${slot.chitMemberId}-${pm.monthNumber}`;
                                         const isChecked = !!selectedDues[key];
                                         return (
                                           <Chip
@@ -985,7 +1018,7 @@ const Chits = () => {
                                             label={`M${pm.monthNumber}: ₹${pm.amountDue.toLocaleString()}`}
                                             color={isChecked ? "primary" : "default"}
                                             variant={isChecked ? "contained" : "outlined"}
-                                            onClick={() => handleCheckboxChange(member.memberId, pm.monthNumber, pm.amountDue)}
+                                            onClick={() => handleCheckboxChange(slot.chitMemberId, pm.monthNumber, pm.amountDue, groupedMember.memberId)}
                                             sx={{ 
                                               cursor: 'pointer',
                                               fontSize: '0.8rem',
@@ -997,17 +1030,17 @@ const Chits = () => {
                                           />
                                         );
                                       })}
-                                    </>
+                                    </Box>
                                   );
-                                })()}
+                                })}
                               </Box>
                             </TableCell>
                             <TableCell sx={{ pr: 3, fontWeight: 'bold', color: 'error.main' }} align="right">
-                              ₹{member.totalPending?.toLocaleString()}
+                              ₹{groupedMember.totalPending?.toLocaleString()}
                             </TableCell>
                           </TableRow>
-                        ))
-                      )}
+                        ));
+                      })()}
                     </TableBody>
                   </Table>
                 </Box>

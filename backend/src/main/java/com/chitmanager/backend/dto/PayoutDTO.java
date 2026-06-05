@@ -16,4 +16,5 @@ public class PayoutDTO {
     private BigDecimal profitAmount;
     private LocalDate payoutDate;
     private String remarks;
+    private Long chitMemberId;
 }

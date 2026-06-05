@@ -3,6 +3,7 @@ package com.chitmanager.backend.controllers;
 import com.chitmanager.backend.dto.ChitGroupDTO;
 import com.chitmanager.backend.dto.MemberDTO;
 import com.chitmanager.backend.models.Member;
+import com.chitmanager.backend.models.ChitMember;
 import com.chitmanager.backend.services.ChitGroupService;
 import com.chitmanager.backend.services.PayoutService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,12 +54,22 @@ public class ChitGroupController {
 
     @GetMapping("/{chitId}/members")
     public ResponseEntity<List<MemberDTO>> getChitGroupMembers(@PathVariable Long chitId) {
-        List<Member> members = chitGroupService.getChitGroupMembers(chitId);
-        List<MemberDTO> memberDTOs = members.stream().map(member -> {
+        List<ChitMember> chitMembers = chitGroupService.getChitMembers(chitId);
+        
+        java.util.Map<Long, Integer> memberSlotCounts = new java.util.HashMap<>();
+        
+        List<MemberDTO> memberDTOs = chitMembers.stream().map(cm -> {
+            Member member = cm.getMember();
             MemberDTO dto = new MemberDTO();
             dto.setId(member.getId());
             dto.setName(member.getName());
             dto.setPhone(member.getPhone());
+            dto.setChitMemberId(cm.getId());
+            
+            int slotCount = memberSlotCounts.getOrDefault(member.getId(), 0) + 1;
+            memberSlotCounts.put(member.getId(), slotCount);
+            dto.setSlotIndex(slotCount);
+            
             return dto;
         }).collect(Collectors.toList());
         return ResponseEntity.ok(memberDTOs);

@@ -6,11 +6,13 @@ import com.chitmanager.backend.dto.PayoutSummaryDTO;
 import com.chitmanager.backend.models.ActualPayout;
 import com.chitmanager.backend.models.ChitGroup;
 import com.chitmanager.backend.models.Member;
+import com.chitmanager.backend.models.ChitMember;
 import com.chitmanager.backend.models.PayoutPlan;
 import com.chitmanager.backend.repositories.ActualPayoutRepository;
 import com.chitmanager.backend.repositories.ChitGroupRepository;
 import com.chitmanager.backend.repositories.MemberRepository;
 import com.chitmanager.backend.repositories.PayoutPlanRepository;
+import com.chitmanager.backend.repositories.ChitMemberRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +37,9 @@ public class PayoutService {
     private MemberRepository memberRepository;
 
     @Autowired
+    private ChitMemberRepository chitMemberRepository;
+
+    @Autowired
     private ProfitCalculationService profitCalculationService;
 
     @Transactional
@@ -53,6 +58,12 @@ public class PayoutService {
         
         payout.setPayoutDate(dto.getPayoutDate());
         payout.setRemarks(dto.getRemarks());
+
+        if (dto.getChitMemberId() != null) {
+            ChitMember chitMember = chitMemberRepository.findById(dto.getChitMemberId())
+                    .orElseThrow(() -> new RuntimeException("Chit member slot not found"));
+            payout.setChitMember(chitMember);
+        }
         
         List<PayoutPlan> plans = payoutPlanRepository.findByChitGroupIdOrderByMonthNumberAsc(dto.getChitGroupId());
         List<ActualPayout> existingPayouts = actualPayoutRepository.findByChitGroupIdOrderByPayoutMonthAscPayoutSequenceSlotAsc(dto.getChitGroupId());
@@ -186,6 +197,7 @@ public class PayoutService {
         dto.setProfitAmount(payout.getProfitAmount());
         dto.setPayoutDate(payout.getPayoutDate());
         dto.setRemarks(payout.getRemarks());
+        dto.setChitMemberId(payout.getChitMember() != null ? payout.getChitMember().getId() : null);
         return dto;
     }
 }

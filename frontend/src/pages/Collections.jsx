@@ -35,12 +35,28 @@ const Collections = () => {
           setMembers(membersRes.data || []);
           
           const collRes = await api.get(`/collections/chit/${selectedChit}/month/${selectedMonth}`);
+          const collectionsList = collRes.data || [];
           const collMap = {};
-          if (collRes.data && Array.isArray(collRes.data)) {
-            collRes.data.forEach(c => {
-              collMap[c.memberId] = c;
-            });
-          }
+          
+          const unmatchedLegacy = [];
+          collectionsList.forEach(c => {
+            if (c.chitMemberId) {
+              collMap[c.chitMemberId] = c;
+            } else {
+              unmatchedLegacy.push(c);
+            }
+          });
+          
+          // Match legacy collections (without chitMemberId) to members' slots
+          membersRes.data.forEach(m => {
+            if (collMap[m.chitMemberId]) return;
+            const legacyIdx = unmatchedLegacy.findIndex(c => c.memberId === m.id);
+            if (legacyIdx !== -1) {
+              collMap[m.chitMemberId] = unmatchedLegacy[legacyIdx];
+              unmatchedLegacy.splice(legacyIdx, 1);
+            }
+          });
+          
           setCollections(collMap);
 
           const payoutsRes = await api.get(`/payouts/chit/${selectedChit}`);
@@ -72,13 +88,15 @@ const Collections = () => {
     return selectedChitData.baseContribution;
   };
 
-  const handleMarkPaid = async (memberId) => {
+  const handleMarkPaid = async (memberId, chitMemberId) => {
     try {
       const amountDue = getAmountDue(memberId);
-      const remark = rowRemarks[memberId] || '';
+      const slotKey = chitMemberId || memberId;
+      const remark = rowRemarks[slotKey] || '';
       const payload = {
         chitGroupId: selectedChit,
         memberId: memberId,
+        chitMemberId: chitMemberId,
         forMonth: selectedMonth,
         amountPaid: amountDue,
         status: 'PAID',
@@ -87,12 +105,12 @@ const Collections = () => {
       };
       
       const response = await api.post('/collections', payload);
-      setCollections(prev => ({ ...prev, [memberId]: response.data }));
+      setCollections(prev => ({ ...prev, [slotKey]: response.data }));
       
-      // Clear the remarks input for this member after successful marking
+      // Clear the remarks input for this member slot after successful marking
       setRowRemarks(prev => {
         const copy = { ...prev };
-        delete copy[memberId];
+        delete copy[slotKey];
         return copy;
       });
     } catch (error) {
@@ -100,13 +118,13 @@ const Collections = () => {
     }
   };
 
-  const handleUnmarkPaid = async (memberId, collectionId) => {
+  const handleUnmarkPaid = async (slotKey, collectionId) => {
     if (window.confirm("Are you sure you want to unmark this collection as paid?")) {
       try {
         await api.delete(`/collections/${collectionId}`);
         setCollections(prev => {
           const copy = { ...prev };
-          delete copy[memberId];
+          delete copy[slotKey];
           return copy;
         });
       } catch (error) {
@@ -173,6 +191,22 @@ const Collections = () => {
   const filteredMembers = members.filter(member =>
     member.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Group members by physical id
+  const groupedMembers = [];
+  const groupedMap = {};
+  filteredMembers.forEach(m => {
+    if (!groupedMap[m.id]) {
+      groupedMap[m.id] = {
+        id: m.id,
+        name: m.name,
+        phone: m.phone,
+        slots: []
+      };
+      groupedMembers.push(groupedMap[m.id]);
+    }
+    groupedMap[m.id].slots.push(m);
+  });
 
   return (
     <Box>
@@ -250,79 +284,101 @@ const Collections = () => {
                           No members assigned to this chit yet.
                         </TableCell>
                       </TableRow>
-                    ) : filteredMembers.length === 0 ? (
+                    ) : groupedMembers.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} align="center" sx={{ py: 3, color: 'text.secondary' }}>
                           No members match "{searchQuery}".
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredMembers.map((member) => {
-                        const collection = collections[member.id];
-                        const isPaid = collection?.status === 'PAID';
-
-                        const amountDue = getAmountDue(member.id);
+                      groupedMembers.map((groupedMember) => {
+                        const amountDuePerSlot = getAmountDue(groupedMember.id);
                         return (
-                          <TableRow key={member.id} hover>
-                            <TableCell sx={{ fontWeight: 500 }}>{member.name}</TableCell>
-                            <TableCell>₹{amountDue?.toLocaleString()}</TableCell>
-                            <TableCell>
-                              <Chip 
-                                label={isPaid ? 'PAID' : 'PENDING'} 
-                                color={isPaid ? 'success' : 'warning'} 
-                                size="small" 
-                              />
-                            </TableCell>
-                            <TableCell>{collection?.paymentDate || '-'}</TableCell>
-                            <TableCell>
-                              {isPaid ? (
-                                collection?.remarks || '-'
-                              ) : (
-                                <TextField
-                                  size="small"
-                                  placeholder="e.g. UPI, Cash, Bank..."
-                                  value={rowRemarks[member.id] || ''}
-                                  onChange={(e) => setRowRemarks(prev => ({ ...prev, [member.id]: e.target.value }))}
-                                  sx={{ width: 200 }}
-                                />
+                          <TableRow key={groupedMember.id} hover>
+                            <TableCell sx={{ fontWeight: 500, verticalAlign: 'top', pt: 2.5 }}>
+                              {groupedMember.name}
+                              {groupedMember.slots.length > 1 && (
+                                <span style={{ fontSize: '0.8rem', color: 'gray', display: 'block' }}>
+                                  ({groupedMember.slots.length} spots)
+                                </span>
                               )}
                             </TableCell>
-                            <TableCell>
-                              {isPaid ? (
-                                <Button 
-                                  variant="outlined" 
-                                  color="error" 
-                                  size="small"
-                                  onClick={() => handleUnmarkPaid(member.id, collection.id)}
-                                >
-                                  Unmark Paid
-                                </Button>
-                              ) : (
-                                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                  <Button 
-                                    variant="outlined" 
-                                    color="primary" 
-                                    size="small"
-                                    onClick={() => handleMarkPaid(member.id)}
-                                  >
-                                    Mark Paid
-                                  </Button>
-                                  {(() => {
-                                    const status = getReminderStatus(parseInt(selectedMonth));
+                            <TableCell colSpan={5} sx={{ p: 0 }}>
+                              <Table size="small" sx={{ borderCollapse: 'collapse', '& td': { borderBottom: 'none' } }}>
+                                <TableBody>
+                                  {groupedMember.slots.map((slot, sIdx) => {
+                                    const slotKey = slot.chitMemberId || slot.id;
+                                    const collection = collections[slotKey];
+                                    const isPaid = collection?.status === 'PAID';
+                                    const label = groupedMember.slots.length > 1 ? `Spot #${sIdx + 1}` : `Spot`;
+                                    
                                     return (
-                                      <Tooltip title={status.isOverdue ? "Send Overdue Reminder (WhatsApp)" : "Send Friendly Reminder (WhatsApp)"}>
-                                        <IconButton
-                                          color={status.isOverdue ? "error" : "success"}
-                                          size="small"
-                                          onClick={() => handleSendReminder(member, amountDue)}
-                                        >
-                                          <MessageCircle size={18} />
-                                        </IconButton>
-                                      </Tooltip>
+                                      <TableRow key={slotKey} hover={false} sx={{ borderBottom: sIdx < groupedMember.slots.length - 1 ? '1px solid' : 'none', borderColor: 'divider' }}>
+                                        <TableCell sx={{ width: '20%', fontWeight: 500, color: 'text.secondary' }}>{label}</TableCell>
+                                        <TableCell sx={{ width: '20%' }}>₹{amountDuePerSlot?.toLocaleString()}</TableCell>
+                                        <TableCell sx={{ width: '15%' }}>
+                                          <Chip 
+                                            label={isPaid ? 'PAID' : 'PENDING'} 
+                                            color={isPaid ? 'success' : 'warning'} 
+                                            size="small" 
+                                          />
+                                        </TableCell>
+                                        <TableCell sx={{ width: '15%' }}>{collection?.paymentDate || '-'}</TableCell>
+                                        <TableCell sx={{ width: '15%' }}>
+                                          {isPaid ? (
+                                            collection?.remarks || '-'
+                                          ) : (
+                                            <TextField
+                                              size="small"
+                                              placeholder="Remarks..."
+                                              value={rowRemarks[slotKey] || ''}
+                                              onChange={(e) => setRowRemarks(prev => ({ ...prev, [slotKey]: e.target.value }))}
+                                              sx={{ width: 140 }}
+                                            />
+                                          )}
+                                        </TableCell>
+                                        <TableCell sx={{ width: '15%', pr: 2 }}>
+                                          {isPaid ? (
+                                            <Button 
+                                              variant="outlined" 
+                                              color="error" 
+                                              size="small"
+                                              onClick={() => handleUnmarkPaid(slotKey, collection.id)}
+                                            >
+                                              Unmark
+                                            </Button>
+                                          ) : (
+                                            <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                                              <Button 
+                                                variant="outlined" 
+                                                color="primary" 
+                                                size="small"
+                                                onClick={() => handleMarkPaid(groupedMember.id, slot.chitMemberId)}
+                                              >
+                                                Mark Paid
+                                              </Button>
+                                              {(() => {
+                                                const status = getReminderStatus(parseInt(selectedMonth));
+                                                return (
+                                                  <Tooltip title={status.isOverdue ? "Send Overdue Reminder" : "Send Friendly Reminder"}>
+                                                    <IconButton
+                                                      color={status.isOverdue ? "error" : "success"}
+                                                      size="small"
+                                                      onClick={() => handleSendReminder(slot, amountDuePerSlot)}
+                                                    >
+                                                      <MessageCircle size={16} />
+                                                    </IconButton>
+                                                  </Tooltip>
+                                                );
+                                              })()}
+                                            </Box>
+                                          )}
+                                        </TableCell>
+                                      </TableRow>
                                     );
-                                  })()}
-                                </Box>
-                              )}
+                                  })}
+                                </TableBody>
+                              </Table>
                             </TableCell>
                           </TableRow>
                         );
@@ -340,93 +396,113 @@ const Collections = () => {
               <Card sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
                 No members assigned to this chit yet.
               </Card>
-            ) : filteredMembers.length === 0 ? (
+            ) : groupedMembers.length === 0 ? (
               <Card sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
                 No members match "{searchQuery}".
               </Card>
             ) : (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {filteredMembers.map((member) => {
-                  const collection = collections[member.id];
-                  const isPaid = collection?.status === 'PAID';
-                  const amountDue = getAmountDue(member.id);
-
+                {groupedMembers.map((groupedMember) => {
+                  const amountDuePerSlot = getAmountDue(groupedMember.id);
                   return (
-                    <Card key={member.id} sx={{ p: 2, borderRadius: 2 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                    <Card key={groupedMember.id} sx={{ p: 2, borderRadius: 2 }}>
+                      <Box sx={{ pb: 1, borderBottom: '1px solid', borderColor: 'divider', mb: 1.5 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                          {member.name}
+                          {groupedMember.name}
                         </Typography>
-                        <Chip 
-                          label={isPaid ? 'PAID' : 'PENDING'} 
-                          color={isPaid ? 'success' : 'warning'} 
-                          size="small" 
-                        />
-                      </Box>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="body2" color="text.secondary">Amount Due</Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>₹{amountDue?.toLocaleString()}</Typography>
-                        </Box>
-                        {isPaid && (
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Typography variant="body2" color="text.secondary">Payment Date</Typography>
-                            <Typography variant="body2">{collection?.paymentDate || '-'}</Typography>
-                          </Box>
+                        {groupedMember.slots.length > 1 && (
+                          <Typography variant="caption" color="text.secondary">
+                            {groupedMember.slots.length} spots total
+                          </Typography>
                         )}
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                          <Typography variant="body2" color="text.secondary">Remarks / Payment Method</Typography>
-                          {isPaid ? (
-                            <Typography variant="body2" sx={{ fontWeight: 500 }}>{collection?.remarks || '-'}</Typography>
-                          ) : (
-                            <TextField
-                              size="small"
-                              fullWidth
-                              placeholder="e.g. UPI, Cash, Bank..."
-                              value={rowRemarks[member.id] || ''}
-                              onChange={(e) => setRowRemarks(prev => ({ ...prev, [member.id]: e.target.value }))}
-                            />
-                          )}
-                        </Box>
-                        <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'flex-end', pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
-                          {isPaid ? (
-                            <Button 
-                              variant="outlined" 
-                              color="error" 
-                              size="small"
-                              onClick={() => handleUnmarkPaid(member.id, collection.id)}
-                              sx={{ fontWeight: 'bold' }}
-                            >
-                              Unmark Paid
-                            </Button>
-                          ) : (
-                            <>
-                              {(() => {
-                                const status = getReminderStatus(parseInt(selectedMonth));
-                                return (
-                                  <Button
-                                    variant="outlined"
-                                    color={status.isOverdue ? "error" : "success"}
-                                    size="small"
-                                    onClick={() => handleSendReminder(member, amountDue)}
-                                    sx={{ fontWeight: 'bold' }}
-                                  >
-                                    WhatsApp Reminder
-                                  </Button>
-                                );
-                              })()}
-                              <Button 
-                                variant="contained" 
-                                color="primary" 
-                                size="small"
-                                onClick={() => handleMarkPaid(member.id)}
-                                sx={{ fontWeight: 'bold' }}
-                              >
-                                Mark Paid
-                              </Button>
-                            </>
-                          )}
-                        </Box>
+                      </Box>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        {groupedMember.slots.map((slot, sIdx) => {
+                          const slotKey = slot.chitMemberId || slot.id;
+                          const collection = collections[slotKey];
+                          const isPaid = collection?.status === 'PAID';
+                          const label = groupedMember.slots.length > 1 ? `Spot #${sIdx + 1}` : `Spot`;
+                          
+                          return (
+                            <Box key={slotKey} sx={{ pl: groupedMember.slots.length > 1 ? 1.5 : 0, borderLeft: groupedMember.slots.length > 1 ? '2px solid' : 'none', borderColor: 'primary.light', pb: sIdx < groupedMember.slots.length - 1 ? 1.5 : 0, borderBottom: sIdx < groupedMember.slots.length - 1 ? '1px dashed' : 'none', borderBottomColor: 'divider' }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
+                                  {label}
+                                </Typography>
+                                <Chip 
+                                  label={isPaid ? 'PAID' : 'PENDING'} 
+                                  color={isPaid ? 'success' : 'warning'} 
+                                  size="small" 
+                                />
+                              </Box>
+                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                  <Typography variant="body2" color="text.secondary">Amount Due</Typography>
+                                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>₹{amountDuePerSlot?.toLocaleString()}</Typography>
+                                </Box>
+                                {isPaid && (
+                                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <Typography variant="body2" color="text.secondary">Payment Date</Typography>
+                                    <Typography variant="body2">{collection?.paymentDate || '-'}</Typography>
+                                  </Box>
+                                )}
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                  <Typography variant="body2" color="text.secondary">Remarks / Payment Method</Typography>
+                                  {isPaid ? (
+                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>{collection?.remarks || '-'}</Typography>
+                                  ) : (
+                                    <TextField
+                                      size="small"
+                                      fullWidth
+                                      placeholder="e.g. UPI, Cash, Bank..."
+                                      value={rowRemarks[slotKey] || ''}
+                                      onChange={(e) => setRowRemarks(prev => ({ ...prev, [slotKey]: e.target.value }))}
+                                    />
+                                  )}
+                                </Box>
+                                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', pt: 1 }}>
+                                  {isPaid ? (
+                                    <Button 
+                                      variant="outlined" 
+                                      color="error" 
+                                      size="small"
+                                      onClick={() => handleUnmarkPaid(slotKey, collection.id)}
+                                      sx={{ fontWeight: 'bold' }}
+                                    >
+                                      Unmark Paid
+                                    </Button>
+                                  ) : (
+                                    <>
+                                      {(() => {
+                                        const status = getReminderStatus(parseInt(selectedMonth));
+                                        return (
+                                          <Button
+                                            variant="outlined"
+                                            color={status.isOverdue ? "error" : "success"}
+                                            size="small"
+                                            onClick={() => handleSendReminder(slot, amountDuePerSlot)}
+                                            sx={{ fontWeight: 'bold' }}
+                                          >
+                                            Reminder
+                                          </Button>
+                                        );
+                                      })()}
+                                      <Button 
+                                        variant="contained" 
+                                        color="primary" 
+                                        size="small"
+                                        onClick={() => handleMarkPaid(groupedMember.id, slot.chitMemberId)}
+                                        sx={{ fontWeight: 'bold' }}
+                                      >
+                                        Mark Paid
+                                      </Button>
+                                    </>
+                                  )}
+                                </Box>
+                              </Box>
+                            </Box>
+                          );
+                        })}
                       </Box>
                     </Card>
                   );

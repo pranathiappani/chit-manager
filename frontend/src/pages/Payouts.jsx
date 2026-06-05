@@ -101,9 +101,11 @@ const Payouts = () => {
     if (submitting) return;
     setSubmitting(true);
     try {
+      const chosenMember = members.find(m => (m.chitMemberId || m.id) === data.chitMemberId);
       const payload = {
         chitGroupId: selectedChit,
-        memberId: data.memberId,
+        memberId: chosenMember ? chosenMember.id : null,
+        chitMemberId: data.chitMemberId,
         payoutMonth: Number(data.payoutMonth),
         payoutAmount: Number(data.payoutAmount),
         payoutDate: data.payoutDate,
@@ -378,25 +380,27 @@ const Payouts = () => {
           <DialogContent dividers>
             <Grid container spacing={2}>
               <Grid item xs={12}>
-                <FormControl fullWidth error={!!errors.memberId}>
-                  <InputLabel id="payout-member-label">Select Member</InputLabel>
+                <FormControl fullWidth error={!!errors.chitMemberId}>
+                  <InputLabel id="payout-member-label">Select Member Spot</InputLabel>
                   <Controller
-                    name="memberId"
+                    name="chitMemberId"
                     control={control}
-                    rules={{ required: 'Member is required' }}
+                    rules={{ required: 'Member spot is required' }}
                     defaultValue=""
                     render={({ field }) => (
                       <Select
                         {...field}
                         labelId="payout-member-label"
-                        label="Select Member"
+                        label="Select Member Spot"
                       >
-                        <MenuItem value="" disabled>-- Select a Member --</MenuItem>
+                        <MenuItem value="" disabled>-- Select a Member Spot --</MenuItem>
                         {members.length === 0 ? (
                           <MenuItem disabled value="">No members found in this chit group. Please assign members first.</MenuItem>
                         ) : (
                           members.map(m => (
-                            <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
+                            <MenuItem key={m.chitMemberId || m.id} value={m.chitMemberId || m.id}>
+                              {m.name} {m.slotIndex ? `(Spot #${m.slotIndex})` : ''}
+                            </MenuItem>
                           ))
                         )}
                       </Select>

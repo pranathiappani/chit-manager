@@ -14,4 +14,6 @@ public class MemberDTO {
     private String guarantor;
     private LocalDate joiningDate;
     private LocalDateTime createdAt;
+    private Long chitMemberId;
+    private Integer slotIndex;
 }

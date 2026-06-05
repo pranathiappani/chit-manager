@@ -29,6 +29,10 @@ public class Collection {
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "chit_member_id")
+    private ChitMember chitMember;
+
     @Column(nullable = false)
     private Integer forMonth;
 

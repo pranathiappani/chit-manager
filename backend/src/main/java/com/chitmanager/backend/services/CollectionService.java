@@ -4,9 +4,11 @@ import com.chitmanager.backend.dto.CollectionDTO;
 import com.chitmanager.backend.models.ChitGroup;
 import com.chitmanager.backend.models.Collection;
 import com.chitmanager.backend.models.Member;
+import com.chitmanager.backend.models.ChitMember;
 import com.chitmanager.backend.repositories.ChitGroupRepository;
 import com.chitmanager.backend.repositories.CollectionRepository;
 import com.chitmanager.backend.repositories.MemberRepository;
+import com.chitmanager.backend.repositories.ChitMemberRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +28,9 @@ public class CollectionService {
     @Autowired
     private MemberRepository memberRepository;
 
+    @Autowired
+    private ChitMemberRepository chitMemberRepository;
+
     @Transactional
     public CollectionDTO recordCollection(CollectionDTO dto) {
         ChitGroup chitGroup = chitGroupRepository.findById(dto.getChitGroupId())
@@ -42,6 +47,12 @@ public class CollectionService {
             collection.setChitGroup(chitGroup);
             collection.setMember(member);
             collection.setForMonth(dto.getForMonth());
+        }
+
+        if (dto.getChitMemberId() != null) {
+            ChitMember chitMember = chitMemberRepository.findById(dto.getChitMemberId())
+                    .orElseThrow(() -> new RuntimeException("Chit member slot not found"));
+            collection.setChitMember(chitMember);
         }
 
         collection.setAmountPaid(dto.getAmountPaid());
@@ -86,6 +97,7 @@ public class CollectionService {
         dto.setStatus(collection.getStatus());
         dto.setPaymentDate(collection.getPaymentDate());
         dto.setRemarks(collection.getRemarks());
+        dto.setChitMemberId(collection.getChitMember() != null ? collection.getChitMember().getId() : null);
         return dto;
     }
 }

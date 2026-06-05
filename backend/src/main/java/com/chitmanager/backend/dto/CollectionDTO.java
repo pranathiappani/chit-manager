@@ -17,4 +17,5 @@ public class CollectionDTO {
     private CollectionStatus status;
     private LocalDate paymentDate;
     private String remarks;
+    private Long chitMemberId;
 }

@@ -92,10 +92,18 @@ public class ChitGroupService {
     }
 
     @Transactional
-    public void removeMemberFromChitGroup(Long chitGroupId, Long memberId) {
+    public void removeMemberFromChitGroup(Long chitGroupId, Long memberIdOrChitMemberId) {
+        // Try to find by ChitMember ID first
+        java.util.Optional<ChitMember> chitMemberOpt = chitMemberRepository.findById(memberIdOrChitMemberId);
+        if (chitMemberOpt.isPresent() && chitMemberOpt.get().getChitGroup().getId().equals(chitGroupId)) {
+            chitMemberRepository.delete(chitMemberOpt.get());
+            return;
+        }
+
+        // Fallback: search by memberId
         List<ChitMember> memberships = chitMemberRepository.findByChitGroupId(chitGroupId);
         ChitMember target = memberships.stream()
-                .filter(cm -> cm.getMember().getId().equals(memberId))
+                .filter(cm -> cm.getMember().getId().equals(memberIdOrChitMemberId))
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Member assignment not found in this chit group"));
                 
@@ -105,6 +113,10 @@ public class ChitGroupService {
     public List<Member> getChitGroupMembers(Long chitGroupId) {
         List<ChitMember> chitMembers = chitMemberRepository.findByChitGroupId(chitGroupId);
         return chitMembers.stream().map(ChitMember::getMember).collect(Collectors.toList());
+    }
+
+    public List<ChitMember> getChitMembers(Long chitGroupId) {
+        return chitMemberRepository.findByChitGroupId(chitGroupId);
     }
 
     @Transactional
@@ -129,7 +141,7 @@ public class ChitGroupService {
         ChitGroup chitGroup = chitGroupRepository.findById(chitGroupId)
                 .orElseThrow(() -> new RuntimeException("Chit group not found"));
 
-        List<Member> members = getChitGroupMembers(chitGroupId);
+        List<ChitMember> chitMembers = getChitMembers(chitGroupId);
         List<com.chitmanager.backend.models.ActualPayout> payouts = actualPayoutRepository.findByChitGroupIdOrderByPayoutDateAsc(chitGroupId);
         List<com.chitmanager.backend.models.Collection> collections = collectionRepository.findByChitGroupId(chitGroupId);
 
@@ -159,14 +171,25 @@ public class ChitGroupService {
 
         List<Map<String, Object>> membersPending = new ArrayList<>();
         BigDecimal totalChitPendingAmount = BigDecimal.ZERO;
+        java.util.Set<Long> matchedCollectionIds = new java.util.HashSet<>();
 
-        for (Member member : members) {
-            // Find when this member got paid
+        for (ChitMember cm : chitMembers) {
+            Member member = cm.getMember();
+            // Find when this specific member slot got paid
             Integer payoutMonth = null;
             for (com.chitmanager.backend.models.ActualPayout p : payouts) {
-                if (p.getMember().getId().equals(member.getId())) {
+                if (p.getChitMember() != null && p.getChitMember().getId().equals(cm.getId())) {
                     payoutMonth = p.getPayoutMonth();
                     break;
+                }
+            }
+            if (payoutMonth == null) {
+                // fallback to legacy
+                for (com.chitmanager.backend.models.ActualPayout p : payouts) {
+                    if (p.getMember().getId().equals(member.getId()) && p.getChitMember() == null) {
+                        payoutMonth = p.getPayoutMonth();
+                        break;
+                    }
                 }
             }
 
@@ -175,11 +198,25 @@ public class ChitGroupService {
 
             for (int m = 1; m <= currentMonth; m++) {
                 final int monthNum = m;
-                // Check if paid
-                boolean isPaid = collections.stream()
-                        .anyMatch(c -> c.getMember().getId().equals(member.getId()) 
-                                && c.getForMonth() == monthNum 
-                                && "PAID".equals(c.getStatus().toString()));
+                // Check if paid (taking care of legacy and multi-spot assignments)
+                boolean isPaid = false;
+                for (com.chitmanager.backend.models.Collection c : collections) {
+                    if (c.getForMonth() == monthNum && "PAID".equals(c.getStatus().toString()) && !matchedCollectionIds.contains(c.getId())) {
+                        if (c.getChitMember() != null) {
+                            if (c.getChitMember().getId().equals(cm.getId())) {
+                                isPaid = true;
+                                matchedCollectionIds.add(c.getId());
+                                break;
+                            }
+                        } else {
+                            if (c.getMember().getId().equals(member.getId())) {
+                                isPaid = true;
+                                matchedCollectionIds.add(c.getId());
+                                break;
+                            }
+                        }
+                    }
+                }
 
                 if (!isPaid) {
                     BigDecimal amountDue = BigDecimal.ZERO;
@@ -206,6 +243,7 @@ public class ChitGroupService {
             if (!pendingMonths.isEmpty()) {
                 Map<String, Object> memberInfo = new HashMap<>();
                 memberInfo.put("memberId", member.getId());
+                memberInfo.put("chitMemberId", cm.getId());
                 memberInfo.put("memberName", member.getName());
                 memberInfo.put("memberPhone", member.getPhone());
                 memberInfo.put("pendingMonths", pendingMonths);
