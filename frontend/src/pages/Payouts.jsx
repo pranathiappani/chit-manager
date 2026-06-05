@@ -6,7 +6,7 @@ import { Wallet, CheckCircle, Clock, TrendingUp } from 'lucide-react';
 import { formatMonth } from '../utils/dateUtils';
 
 const StatCard = ({ title, value, icon, color }) => (
-  <Card sx={{ height: '100%' }}>
+  <Card sx={{ width: '100%', height: '100%' }}>
     <CardContent>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <Box>
@@ -192,8 +192,8 @@ const Payouts = () => {
       </Card>
 
       {summary && selectedChitData && (
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={6} md={3}>
+        <Grid container spacing={3} sx={{ mb: 4, width: '100%' }}>
+          <Grid item xs={12} sm={12} md={3} sx={{ width: { xs: '100%', md: 'auto' } }}>
             <StatCard 
               title="Total Expected Payouts" 
               value={summary.totalExpectedPayouts} 
@@ -201,7 +201,7 @@ const Payouts = () => {
               color="#4f46e5" 
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={12} md={3} sx={{ width: { xs: '100%', md: 'auto' } }}>
             <StatCard 
               title="Completed Payouts" 
               value={summary.completedPayouts} 
@@ -209,7 +209,7 @@ const Payouts = () => {
               color="#10b981" 
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={12} md={3} sx={{ width: { xs: '100%', md: 'auto' } }}>
             <StatCard 
               title="Estimated Profit" 
               value={`₹${selectedChitData.estimatedProfit?.toLocaleString() || 0}`} 
@@ -217,8 +217,8 @@ const Payouts = () => {
               color="#f59e0b" 
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ height: '100%', backgroundColor: selectedChitData.status === 'COMPLETED' ? '#10b98108' : 'background.paper', border: selectedChitData.status === 'COMPLETED' ? '1px solid #10b98130' : 'none' }}>
+          <Grid item xs={12} sm={12} md={3} sx={{ width: { xs: '100%', md: 'auto' } }}>
+            <Card sx={{ width: '100%', height: '100%', backgroundColor: selectedChitData.status === 'COMPLETED' ? '#10b98108' : 'background.paper', border: selectedChitData.status === 'COMPLETED' ? '1px solid #10b98130' : 'none' }}>
               <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                 <Typography color="text.secondary" variant="subtitle2" sx={{ fontWeight: 500 }} gutterBottom>
                   Actual Profit

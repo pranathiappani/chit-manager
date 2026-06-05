@@ -67,13 +67,14 @@ const ChitRow = ({ chit, handleViewMembers, handlePendingDuesOpen, handleAssignO
               <Typography variant="subtitle2" gutterBottom component="div" sx={{ fontWeight: 'bold', mb: 1.5 }}>
                 Group Actions & Management
               </Typography>
-              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, flexWrap: 'wrap', width: '100%' }}>
                 <Button 
                   variant="outlined" 
                   color="info" 
                   startIcon={<Users size={16} />} 
                   onClick={(e) => { e.stopPropagation(); handleViewMembers(chit); }}
                   size="small"
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   View Members
                 </Button>
@@ -83,6 +84,7 @@ const ChitRow = ({ chit, handleViewMembers, handlePendingDuesOpen, handleAssignO
                   startIcon={<Clock size={16} />} 
                   onClick={(e) => { e.stopPropagation(); handlePendingDuesOpen(chit); }}
                   size="small"
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Pending Dues
                 </Button>
@@ -92,6 +94,7 @@ const ChitRow = ({ chit, handleViewMembers, handlePendingDuesOpen, handleAssignO
                   startIcon={<UserPlus size={16} />} 
                   onClick={(e) => { e.stopPropagation(); handleAssignOpen(chit.id); }}
                   size="small"
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Assign Member
                 </Button>
@@ -101,6 +104,7 @@ const ChitRow = ({ chit, handleViewMembers, handlePendingDuesOpen, handleAssignO
                   startIcon={<Settings2 size={16} />} 
                   onClick={(e) => { e.stopPropagation(); handlePlanOpen(chit); }}
                   size="small"
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Payout Plans
                 </Button>
@@ -110,6 +114,7 @@ const ChitRow = ({ chit, handleViewMembers, handlePendingDuesOpen, handleAssignO
                   startIcon={<Receipt size={16} />} 
                   onClick={(e) => { e.stopPropagation(); handleLedgerOpen(chit); }}
                   size="small"
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Chit Ledger
                 </Button>
@@ -119,7 +124,7 @@ const ChitRow = ({ chit, handleViewMembers, handlePendingDuesOpen, handleAssignO
                   startIcon={<Trash2 size={16} />} 
                   onClick={(e) => { e.stopPropagation(); handleDeleteChit(chit.id); }}
                   size="small"
-                  sx={{ ml: 'auto' }}
+                  sx={{ width: { xs: '100%', sm: 'auto' }, ml: { xs: 0, sm: 'auto' } }}
                 >
                   Delete Chit Group
                 </Button>

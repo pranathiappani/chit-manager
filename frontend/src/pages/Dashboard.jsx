@@ -4,7 +4,7 @@ import { Users, Wallet, TrendingUp, AlertCircle } from 'lucide-react';
 import api from '../api/axiosConfig';
 
 const StatCard = ({ title, value, icon, color }) => (
-  <Card sx={{ height: '100%', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-2px)' } }}>
+  <Card sx={{ width: '100%', height: '100%', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-2px)' } }}>
     <CardContent>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <Box>
@@ -83,8 +83,8 @@ const Dashboard = () => {
         </Button>
       </Box>
 
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
+      <Grid container spacing={3} sx={{ mb: 4, width: '100%' }}>
+        <Grid item xs={12} sm={12} md={3} sx={{ width: { xs: '100%', md: 'auto' } }}>
           <StatCard
             title="Total Active Chits"
             value={stats?.totalActiveChits || 0}
@@ -92,7 +92,7 @@ const Dashboard = () => {
             color="#3b82f6"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={12} md={3} sx={{ width: { xs: '100%', md: 'auto' } }}>
           <StatCard
             title="Total Members"
             value={stats?.totalMembers || 0}
@@ -100,7 +100,7 @@ const Dashboard = () => {
             color="#8b5cf6"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={12} md={3} sx={{ width: { xs: '100%', md: 'auto' } }}>
           <StatCard
             title="Profits (Completed Chits)"
             value={`₹${stats?.completedChitsProfit?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}`}
@@ -108,7 +108,7 @@ const Dashboard = () => {
             color="#10b981"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={12} md={3} sx={{ width: { xs: '100%', md: 'auto' } }}>
           <StatCard
             title="Pending Collections (Current Month)"
             value={stats?.pendingCollections || 0}

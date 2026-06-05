@@ -12,6 +12,7 @@ const Collections = () => {
   const [collections, setCollections] = useState({});
   const [payouts, setPayouts] = useState([]);
   const [rowRemarks, setRowRemarks] = useState({});
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const fetchChits = async () => {
@@ -27,6 +28,7 @@ const Collections = () => {
 
   useEffect(() => {
     const fetchMembersAndCollections = async () => {
+      setSearchQuery('');
       if (selectedChit && selectedMonth) {
         try {
           const membersRes = await api.get(`/chits/${selectedChit}/members`);
@@ -168,6 +170,9 @@ const Collections = () => {
 
   const selectedChitData = chits.find(c => Number(c.id) === Number(selectedChit));
   const monthsArray = selectedChitData ? Array.from({length: selectedChitData.durationMonths}, (_, i) => i + 1) : [];
+  const filteredMembers = members.filter(member =>
+    member.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <Box>
@@ -209,6 +214,16 @@ const Collections = () => {
             ))}
           </Select>
         </FormControl>
+
+        {selectedChit && selectedMonth && (
+          <TextField
+            label="Search by Name"
+            variant="outlined"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            sx={{ minWidth: { xs: '100%', sm: 250 }, ml: { sm: 'auto' } }}
+          />
+        )}
       </Card>
 
       {selectedChit && selectedMonth && (
@@ -235,8 +250,14 @@ const Collections = () => {
                           No members assigned to this chit yet.
                         </TableCell>
                       </TableRow>
+                    ) : filteredMembers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                          No members match "{searchQuery}".
+                        </TableCell>
+                      </TableRow>
                     ) : (
-                      members.map((member) => {
+                      filteredMembers.map((member) => {
                         const collection = collections[member.id];
                         const isPaid = collection?.status === 'PAID';
 
@@ -319,9 +340,13 @@ const Collections = () => {
               <Card sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
                 No members assigned to this chit yet.
               </Card>
+            ) : filteredMembers.length === 0 ? (
+              <Card sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
+                No members match "{searchQuery}".
+              </Card>
             ) : (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {members.map((member) => {
+                {filteredMembers.map((member) => {
                   const collection = collections[member.id];
                   const isPaid = collection?.status === 'PAID';
                   const amountDue = getAmountDue(member.id);
