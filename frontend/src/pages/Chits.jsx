@@ -139,6 +139,7 @@ const ChitRow = ({ chit, handleViewMembers, handlePendingDuesOpen, handleAssignO
 
 const Chits = () => {
   const [chits, setChits] = useState([]);
+  const [loadingChits, setLoadingChits] = useState(true);
   const [allMembers, setAllMembers] = useState([]);
   const [open, setOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
@@ -346,6 +347,8 @@ const Chits = () => {
       setChits(response.data || []);
     } catch (error) {
       console.error('Failed to fetch chits', error);
+    } finally {
+      setLoadingChits(false);
     }
   };
 
@@ -537,7 +540,13 @@ const Chits = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {chits.length === 0 ? (
+              {loadingChits ? (
+                <TableRow>
+                  <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                    <CircularProgress size={30} />
+                  </TableCell>
+                </TableRow>
+              ) : chits.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
                     No chit groups found. Create one to get started!

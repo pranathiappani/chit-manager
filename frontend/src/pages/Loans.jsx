@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Card, CardContent, Typography, Grid, Table, TableBody, TableCell, TableHead, TableRow, MenuItem, Select, FormControl, InputLabel, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Chip, Divider } from '@mui/material';
+import { Box, Card, CardContent, Typography, Grid, Table, TableBody, TableCell, TableHead, TableRow, MenuItem, Select, FormControl, InputLabel, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Chip, Divider, CircularProgress } from '@mui/material';
 import { Landmark, ArrowUpRight, CheckCircle, Clock, Percent, DollarSign, Calendar } from 'lucide-react';
 import api from '../api/axiosConfig';
 
@@ -26,7 +26,7 @@ const StatCard = ({ title, value, icon, color }) => (
 const Loans = () => {
   const [loans, setLoans] = useState([]);
   const [members, setMembers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [openCreate, setOpenCreate] = useState(false);
   const [openClose, setOpenClose] = useState(false);
   const [openCollectInterest, setOpenCollectInterest] = useState(false);
@@ -370,7 +370,13 @@ const Loans = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {loans.length === 0 ? (
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={9} align="center" sx={{ py: 6 }}>
+                        <CircularProgress size={30} />
+                      </TableCell>
+                    </TableRow>
+                  ) : loans.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={9} align="center" sx={{ py: 3 }}>
                         No loan records found.
@@ -514,7 +520,11 @@ const Loans = () => {
 
       {/* Mobile Stacked Card View */}
       <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-        {loans.length === 0 ? (
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+            <CircularProgress size={30} />
+          </Box>
+        ) : loans.length === 0 ? (
           <Card sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
             No loan records found.
           </Card>

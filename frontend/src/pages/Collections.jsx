@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Card, Typography, Table, TableBody, TableCell, TableHead, TableRow, MenuItem, Select, FormControl, InputLabel, Button, Chip, TextField, IconButton, Tooltip } from '@mui/material';
+import { Box, Card, Typography, Table, TableBody, TableCell, TableHead, TableRow, MenuItem, Select, FormControl, InputLabel, Button, Chip, TextField, IconButton, Tooltip, CircularProgress } from '@mui/material';
 import { MessageCircle } from 'lucide-react';
 import api from '../api/axiosConfig';
 import { formatMonth } from '../utils/dateUtils';
@@ -13,6 +13,7 @@ const Collections = () => {
   const [payouts, setPayouts] = useState([]);
   const [rowRemarks, setRowRemarks] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchChits = async () => {
@@ -30,6 +31,7 @@ const Collections = () => {
     const fetchMembersAndCollections = async () => {
       setSearchQuery('');
       if (selectedChit && selectedMonth) {
+        setLoading(true);
         try {
           const membersRes = await api.get(`/chits/${selectedChit}/members`);
           setMembers(membersRes.data || []);
@@ -63,6 +65,8 @@ const Collections = () => {
           setPayouts(payoutsRes.data || []);
         } catch (error) {
           console.error('Failed to fetch data', error);
+        } finally {
+          setLoading(false);
         }
       } else {
         setMembers([]);
@@ -278,7 +282,13 @@ const Collections = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {members.length === 0 ? (
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                          <CircularProgress size={30} />
+                        </TableCell>
+                      </TableRow>
+                    ) : members.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
                           No members assigned to this chit yet.
@@ -392,7 +402,11 @@ const Collections = () => {
 
           {/* Mobile Card List View */}
           <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-            {members.length === 0 ? (
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+                <CircularProgress size={30} />
+              </Box>
+            ) : members.length === 0 ? (
               <Card sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
                 No members assigned to this chit yet.
               </Card>

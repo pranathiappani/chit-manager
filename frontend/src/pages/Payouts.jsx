@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Card, CardContent, Typography, Grid, Table, TableBody, TableCell, TableHead, TableRow, MenuItem, Select, FormControl, InputLabel, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Chip } from '@mui/material';
+import { Box, Card, CardContent, Typography, Grid, Table, TableBody, TableCell, TableHead, TableRow, MenuItem, Select, FormControl, InputLabel, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Chip, CircularProgress } from '@mui/material';
 import { useForm, useWatch, Controller } from 'react-hook-form';
 import api from '../api/axiosConfig';
 import { Wallet, CheckCircle, Clock, TrendingUp } from 'lucide-react';
@@ -34,6 +34,7 @@ const Payouts = () => {
   const [payoutPlansConfig, setPayoutPlansConfig] = useState([]);
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
   
   const { register, handleSubmit, reset, setValue, control, formState: { errors } } = useForm();
 
@@ -50,6 +51,7 @@ const Payouts = () => {
   }, [watchedPayoutMonth, payoutPlansConfig, setValue]);
 
   const loadChitData = async (chitId) => {
+    setLoading(true);
     try {
       const [payoutsRes, membersRes, summaryRes, planRes] = await Promise.all([
         api.get(`/payouts/chit/${chitId}`),
@@ -63,6 +65,8 @@ const Payouts = () => {
       setPayoutPlansConfig(planRes.data || []);
     } catch (error) {
       console.error('Failed to load chit details', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -193,7 +197,13 @@ const Payouts = () => {
         </FormControl>
       </Card>
 
-      {summary && selectedChitData && (
+      {selectedChit && loading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+          <CircularProgress size={40} />
+        </Box>
+      )}
+
+      {!loading && summary && selectedChitData && (
         <Grid container spacing={3} sx={{ mb: 4, width: '100%' }}>
           <Grid item xs={12} sm={12} md={3} sx={{ width: { xs: '100%', md: 'auto' } }}>
             <StatCard 
@@ -264,7 +274,7 @@ const Payouts = () => {
         </Grid>
       )}
 
-      {selectedChit && (
+      {selectedChit && !loading && (
         <Card>
           <CardContent>
             <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>Payout History</Typography>

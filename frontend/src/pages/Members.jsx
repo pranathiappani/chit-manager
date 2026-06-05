@@ -86,6 +86,7 @@ const MobileMemberRow = ({ member, handleViewDetails, handleEditClick, handleDel
 
 const Members = () => {
   const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -100,6 +101,8 @@ const Members = () => {
       setMembers(response.data || []);
     } catch (error) {
       console.error('Failed to fetch members', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -212,7 +215,13 @@ const Members = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {members.length === 0 ? (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} align="center" sx={{ py: 6 }}>
+                      <CircularProgress size={30} />
+                    </TableCell>
+                  </TableRow>
+                ) : members.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
                       No members found. Add your first member!
@@ -241,7 +250,11 @@ const Members = () => {
 
       {/* Mobile Collapsible Card View */}
       <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-        {members.length === 0 ? (
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+            <CircularProgress size={30} />
+          </Box>
+        ) : members.length === 0 ? (
           <Card sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
             No members found. Add your first member!
           </Card>
