@@ -129,7 +129,8 @@ const Dashboard = () => {
               Live outstanding collection tracking for each active chit group in its current running month
             </Typography>
           </Box>
-          <Box sx={{ overflowX: 'auto', width: '100%' }}>
+          {/* Desktop Table View */}
+          <Box sx={{ display: { xs: 'none', md: 'block' }, overflowX: 'auto', width: '100%' }}>
             <Table sx={{ minWidth: 650 }}>
               <TableHead>
                 <TableRow sx={{ backgroundColor: 'background.default' }}>
@@ -190,6 +191,66 @@ const Dashboard = () => {
                 )}
               </TableBody>
             </Table>
+          </Box>
+
+          {/* Mobile Stacked Card View */}
+          <Box sx={{ display: { xs: 'block', md: 'none' }, p: 2 }}>
+            {!stats?.activeChitsCollectionDetails || stats.activeChitsCollectionDetails.length === 0 ? (
+              <Typography color="text.secondary" align="center" sx={{ py: 2 }}>
+                No active chit groups found.
+              </Typography>
+            ) : (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {stats.activeChitsCollectionDetails.map((details) => {
+                  const isFullyPaid = details.pendingMembersCount === 0;
+                  return (
+                    <Card key={details.chitId} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                          {details.chitName}
+                        </Typography>
+                        <Chip 
+                          label={`Month ${details.currentMonth}`} 
+                          size="small" 
+                          color="primary"
+                          variant="outlined"
+                          sx={{ fontWeight: 'bold' }}
+                        />
+                      </Box>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2" color="text.secondary">Monthly Contribution</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            ₹{details.monthlyCollection?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="body2" color="text.secondary">Collection Progress</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                            {details.paidMembersCount} / {details.totalMembers} Paid
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="body2" color="text.secondary">Status</Typography>
+                          <Chip 
+                            label={isFullyPaid ? 'FULLY PAID' : `${details.pendingMembersCount} PENDING`} 
+                            size="small" 
+                            color={isFullyPaid ? 'success' : 'warning'}
+                            sx={{ fontWeight: 'bold', fontSize: '0.7rem' }}
+                          />
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 'bold' }}>Pending Amount</Typography>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: isFullyPaid ? 'text.primary' : 'error.main' }}>
+                            ₹{details.pendingAmount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Card>
+                  );
+                })}
+              </Box>
+            )}
           </Box>
         </CardContent>
       </Card>

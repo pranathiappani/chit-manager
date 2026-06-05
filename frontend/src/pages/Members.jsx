@@ -1,8 +1,88 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Card, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Grid, Chip, Divider, CircularProgress } from '@mui/material';
+import { Box, Card, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Grid, Chip, Divider, CircularProgress, Collapse } from '@mui/material';
 import { useForm } from 'react-hook-form';
-import { Plus, Edit2, Trash2, Eye, Landmark, Wallet } from 'lucide-react';
+import { Plus, Edit2, Trash2, Eye, Landmark, Wallet, ChevronDown, ChevronUp } from 'lucide-react';
 import api from '../api/axiosConfig';
+
+const MobileMemberRow = ({ member, handleViewDetails, handleEditClick, handleDeleteMember }) => {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <Card sx={{ p: 2, mb: 1.5, borderRadius: 2, boxShadow: 1, border: '1px solid', borderColor: 'divider' }}>
+      <Box 
+        onClick={() => setExpanded(!expanded)} 
+        sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+      >
+        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
+          {member.name}
+        </Typography>
+        <IconButton size="small">
+          {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        </IconButton>
+      </Box>
+      <Collapse in={expanded} timeout="auto" unmountOnExit>
+        <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>Phone Number</Typography>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>{member.phone || '-'}</Typography>
+          </Box>
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>Physical Address</Typography>
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>{member.address || '-'}</Typography>
+          </Box>
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>Joining Date</Typography>
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>{member.joiningDate || '-'}</Typography>
+          </Box>
+          {member.nominee && (
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>Nominee Name</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 500 }}>{member.nominee}</Typography>
+            </Box>
+          )}
+          {member.guarantor && (
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>Guarantor Name</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 500 }}>{member.guarantor}</Typography>
+            </Box>
+          )}
+          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', mt: 1 }}>
+            <Button 
+              variant="outlined" 
+              color="info" 
+              startIcon={<Eye size={16} />} 
+              onClick={() => handleViewDetails(member.id)}
+              size="small"
+              sx={{ fontWeight: 'bold' }}
+            >
+              Portfolio
+            </Button>
+            <Button 
+              variant="outlined" 
+              color="primary" 
+              startIcon={<Edit2 size={16} />} 
+              onClick={() => handleEditClick(member)}
+              size="small"
+              sx={{ fontWeight: 'bold' }}
+            >
+              Edit
+            </Button>
+            <Button 
+              variant="outlined" 
+              color="error" 
+              startIcon={<Trash2 size={16} />} 
+              onClick={() => handleDeleteMember(member.id)}
+              size="small"
+              sx={{ fontWeight: 'bold' }}
+            >
+              Delete
+            </Button>
+          </Box>
+        </Box>
+      </Collapse>
+    </Card>
+  );
+};
 
 const Members = () => {
   const [members, setMembers] = useState([]);
@@ -117,44 +197,68 @@ const Members = () => {
         </Button>
       </Box>
 
-      <Card>
-        <Box sx={{ overflowX: 'auto' }}>
-          <Table>
-            <TableHead>
-              <TableRow sx={{ backgroundColor: 'background.default' }}>
-                <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Phone</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Address</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Joining Date</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {members.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
-                    No members found. Add your first member!
-                  </TableCell>
+      {/* Desktop Table View */}
+      <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+        <Card>
+          <Box sx={{ overflowX: 'auto' }}>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ backgroundColor: 'background.default' }}>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Phone</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Address</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Joining Date</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
                 </TableRow>
-              ) : (
-                members.map((member) => (
-                  <TableRow key={member.id}>
-                    <TableCell>{member.name}</TableCell>
-                    <TableCell>{member.phone}</TableCell>
-                    <TableCell>{member.address}</TableCell>
-                    <TableCell>{member.joiningDate}</TableCell>
-                    <TableCell>
-                      <IconButton size="small" color="info" onClick={() => handleViewDetails(member.id)} title="View Portfolio"><Eye size={18} /></IconButton>
-                      <IconButton size="small" color="primary" onClick={() => handleEditClick(member)} title="Edit Member"><Edit2 size={18} /></IconButton>
-                      <IconButton size="small" color="error" onClick={() => handleDeleteMember(member.id)} title="Delete Member"><Trash2 size={18} /></IconButton>
+              </TableHead>
+              <TableBody>
+                {members.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                      No members found. Add your first member!
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </Box>
-      </Card>
+                ) : (
+                  members.map((member) => (
+                    <TableRow key={member.id}>
+                      <TableCell>{member.name}</TableCell>
+                      <TableCell>{member.phone}</TableCell>
+                      <TableCell>{member.address}</TableCell>
+                      <TableCell>{member.joiningDate}</TableCell>
+                      <TableCell>
+                        <IconButton size="small" color="info" onClick={() => handleViewDetails(member.id)} title="View Portfolio"><Eye size={18} /></IconButton>
+                        <IconButton size="small" color="primary" onClick={() => handleEditClick(member)} title="Edit Member"><Edit2 size={18} /></IconButton>
+                        <IconButton size="small" color="error" onClick={() => handleDeleteMember(member.id)} title="Delete Member"><Trash2 size={18} /></IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </Box>
+        </Card>
+      </Box>
+
+      {/* Mobile Collapsible Card View */}
+      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+        {members.length === 0 ? (
+          <Card sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
+            No members found. Add your first member!
+          </Card>
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+            {members.map((member) => (
+              <MobileMemberRow
+                key={member.id}
+                member={member}
+                handleViewDetails={handleViewDetails}
+                handleEditClick={handleEditClick}
+                handleDeleteMember={handleDeleteMember}
+              />
+            ))}
+          </Box>
+        )}
+      </Box>
 
       {/* Add Member Modal */}
       <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>

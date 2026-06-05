@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Card, CardContent, Typography, Grid, Table, TableBody, TableCell, TableHead, TableRow, MenuItem, Select, FormControl, InputLabel, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
+import { Box, Card, CardContent, Typography, Grid, Table, TableBody, TableCell, TableHead, TableRow, MenuItem, Select, FormControl, InputLabel, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Chip } from '@mui/material';
 import { useForm, useWatch, Controller } from 'react-hook-form';
 import api from '../api/axiosConfig';
 import { Wallet, CheckCircle, Clock, TrendingUp } from 'lucide-react';
@@ -266,7 +266,9 @@ const Payouts = () => {
         <Card>
           <CardContent>
             <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>Payout History</Typography>
-            <Box sx={{ overflowX: 'auto' }}>
+            
+            {/* Desktop Table View */}
+            <Box sx={{ display: { xs: 'none', md: 'block' }, overflowX: 'auto' }}>
               <Table>
                 <TableHead>
                   <TableRow sx={{ backgroundColor: 'background.default' }}>
@@ -309,6 +311,61 @@ const Payouts = () => {
                   )}
                 </TableBody>
               </Table>
+            </Box>
+
+            {/* Mobile Stacked Card View */}
+            <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+              {payouts.length === 0 ? (
+                <Typography color="text.secondary" align="center" sx={{ py: 2 }}>
+                  No payouts recorded yet for this group.
+                </Typography>
+              ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {payouts.map((payout) => (
+                    <Card key={payout.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                          {payout.memberName}
+                        </Typography>
+                        <Chip 
+                          label={`Month ${payout.payoutMonth}`} 
+                          size="small" 
+                          color="secondary"
+                          variant="outlined"
+                          sx={{ fontWeight: 'bold' }}
+                        />
+                      </Box>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2" color="text.secondary">Payout Amount</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                            ₹{payout.payoutAmount?.toLocaleString()}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2" color="text.secondary">Payout Date</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>{payout.payoutDate}</Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                          <Typography variant="body2" color="text.secondary">Remarks</Typography>
+                          <Typography variant="body2">{payout.remarks || '-'}</Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', pt: 1, borderTop: '1px solid', borderColor: 'divider', mt: 1 }}>
+                          <Button 
+                            variant="outlined" 
+                            color="error" 
+                            size="small" 
+                            onClick={() => handleDeletePayout(payout.id)}
+                            sx={{ fontWeight: 'bold' }}
+                          >
+                            Delete Payout
+                          </Button>
+                        </Box>
+                      </Box>
+                    </Card>
+                  ))}
+                </Box>
+              )}
             </Box>
           </CardContent>
         </Card>

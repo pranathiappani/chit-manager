@@ -349,165 +349,332 @@ const Loans = () => {
       </Grid>
 
       {/* Loans Table */}
-      <Card>
-        <CardContent sx={{ p: 0 }}>
-          <Typography variant="h6" sx={{ p: 2, fontWeight: 'bold' }}>Loans Ledger</Typography>
-          <Box sx={{ overflowX: 'auto', width: '100%' }}>
-            <Table sx={{ minWidth: 850 }}>
-              <TableHead>
-                <TableRow sx={{ backgroundColor: 'background.default' }}>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Member</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Principal Amount</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Interest Rate & Type</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Start Date</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>End Date</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Interest Status</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Repayable Total</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', minWidth: 220 }}>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {loans.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={9} align="center" sx={{ py: 3 }}>
-                      No loan records found.
-                    </TableCell>
+      {/* Desktop Table View */}
+      <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+        <Card>
+          <CardContent sx={{ p: 0 }}>
+            <Typography variant="h6" sx={{ p: 2, fontWeight: 'bold' }}>Loans Ledger</Typography>
+            <Box sx={{ overflowX: 'auto', width: '100%' }}>
+              <Table sx={{ minWidth: 850 }}>
+                <TableHead>
+                  <TableRow sx={{ backgroundColor: 'background.default' }}>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Member</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Principal Amount</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Interest Rate & Type</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Start Date</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>End Date</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Interest Status</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Repayable Total</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', minWidth: 220 }}>Actions</TableCell>
                   </TableRow>
-                ) : (
-                  loans.map((loan) => (
-                    <TableRow key={loan.id} sx={{ '&:hover': { backgroundColor: 'action.hover' } }}>
-                      <TableCell sx={{ fontWeight: 500 }}>{loan.memberName}</TableCell>
-                      <TableCell>₹{loan.amount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>{loan.interestRate}% / month</Typography>
-                        <Chip 
-                          label={loan.interestType === 'MONTHLY' ? 'Monthly Collection' : 'Accumulated'} 
-                          size="small" 
-                          variant="outlined" 
-                          color={loan.interestType === 'MONTHLY' ? 'secondary' : 'default'}
-                          sx={{ fontSize: '0.65rem', height: 18, mt: 0.5, fontWeight: 'bold' }} 
-                        />
+                </TableHead>
+                <TableBody>
+                  {loans.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={9} align="center" sx={{ py: 3 }}>
+                        No loan records found.
                       </TableCell>
-                      <TableCell>{loan.startDate}</TableCell>
-                      <TableCell>{loan.endDate || '-'}</TableCell>
-                      <TableCell>
-                        {loan.status === 'CLOSED' ? (
-                          <Box>
-                            <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'success.main' }}>
-                              ₹{loan.calculatedInterest?.toLocaleString(undefined, { minimumFractionDigits: 2 })} (Paid)
-                            </Typography>
-                            <Button
-                              variant="text"
-                              size="small"
-                              onClick={() => handleViewPaymentsOpen(loan)}
-                              sx={{ p: 0, fontSize: '0.7rem', textTransform: 'none', minWidth: 0 }}
-                            >
-                              View Receipts
-                            </Button>
-                          </Box>
-                        ) : (
-                          loan.interestType === 'MONTHLY' ? (
-                            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                              <Typography variant="caption" color="text.secondary">
-                                Collected Interest:
+                    </TableRow>
+                  ) : (
+                    loans.map((loan) => (
+                      <TableRow key={loan.id} sx={{ '&:hover': { backgroundColor: 'action.hover' } }}>
+                        <TableCell sx={{ fontWeight: 500 }}>{loan.memberName}</TableCell>
+                        <TableCell>₹{loan.amount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                        <TableCell>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>{loan.interestRate}% / month</Typography>
+                          <Chip 
+                            label={loan.interestType === 'MONTHLY' ? 'Monthly Collection' : 'Accumulated'} 
+                            size="small" 
+                            variant="outlined" 
+                            color={loan.interestType === 'MONTHLY' ? 'secondary' : 'default'}
+                            sx={{ fontSize: '0.65rem', height: 18, mt: 0.5, fontWeight: 'bold' }} 
+                          />
+                        </TableCell>
+                        <TableCell>{loan.startDate}</TableCell>
+                        <TableCell>{loan.endDate || '-'}</TableCell>
+                        <TableCell>
+                          {loan.status === 'CLOSED' ? (
+                            <Box>
+                              <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                                ₹{loan.calculatedInterest?.toLocaleString(undefined, { minimumFractionDigits: 2 })} (Paid)
                               </Typography>
-                              <Button 
-                                variant="text" 
-                                size="small" 
+                              <Button
+                                variant="text"
+                                size="small"
                                 onClick={() => handleViewPaymentsOpen(loan)}
-                                sx={{ 
-                                  fontWeight: 'bold', 
-                                  p: 0, 
-                                  minWidth: 0, 
-                                  justifyContent: 'flex-start',
-                                  color: 'success.main',
-                                  textTransform: 'none',
-                                  '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' }
-                                }}
+                                sx={{ p: 0, fontSize: '0.7rem', textTransform: 'none', minWidth: 0 }}
                               >
-                                ₹{loan.collectedInterest?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                View Receipts
                               </Button>
                             </Box>
                           ) : (
-                            <Typography variant="body2" color="text.secondary">Accumulating...</Typography>
-                          )
-                        )}
-                      </TableCell>
-                      <TableCell sx={{ fontWeight: loan.status === 'CLOSED' ? 'bold' : 'normal' }}>
-                        {loan.totalRepayableAmount !== null ? `₹${loan.totalRepayableAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
-                      </TableCell>
-                      <TableCell>
-                        {loan.status === 'ACTIVE' ? (
-                          <Chip label="ACTIVE" size="small" color="primary" sx={{ fontWeight: 'bold' }} />
-                        ) : (
-                          <Chip label="CLOSED" size="small" color="success" sx={{ fontWeight: 'bold' }} />
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {loan.status === 'ACTIVE' && (
-                          <Box sx={{ display: 'flex', gap: 1 }}>
-                            {loan.interestType === 'MONTHLY' && (
+                            loan.interestType === 'MONTHLY' ? (
+                              <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                                <Typography variant="caption" color="text.secondary">
+                                  Collected Interest:
+                                </Typography>
+                                <Button 
+                                  variant="text" 
+                                  size="small" 
+                                  onClick={() => handleViewPaymentsOpen(loan)}
+                                  sx={{ 
+                                    fontWeight: 'bold', 
+                                    p: 0, 
+                                    minWidth: 0, 
+                                    justifyContent: 'flex-start',
+                                    color: 'success.main',
+                                    textTransform: 'none',
+                                    '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' }
+                                  }}
+                                >
+                                  ₹{loan.collectedInterest?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </Button>
+                              </Box>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">Accumulating...</Typography>
+                            )
+                          )}
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: loan.status === 'CLOSED' ? 'bold' : 'normal' }}>
+                          {loan.totalRepayableAmount !== null ? `₹${loan.totalRepayableAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
+                        </TableCell>
+                        <TableCell>
+                          {loan.status === 'ACTIVE' ? (
+                            <Chip label="ACTIVE" size="small" color="primary" sx={{ fontWeight: 'bold' }} />
+                          ) : (
+                            <Chip label="CLOSED" size="small" color="success" sx={{ fontWeight: 'bold' }} />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {loan.status === 'ACTIVE' && (
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                              {loan.interestType === 'MONTHLY' && (
+                                <Button
+                                  variant="contained"
+                                  color="success"
+                                  size="small"
+                                  onClick={() => handleCollectInterestOpen(loan)}
+                                  sx={{ fontWeight: 'bold' }}
+                                >
+                                  Collect Interest
+                                </Button>
+                              )}
                               <Button
                                 variant="contained"
-                                color="success"
+                                color="warning"
                                 size="small"
-                                onClick={() => handleCollectInterestOpen(loan)}
+                                onClick={() => handleCloseOpen(loan)}
                                 sx={{ fontWeight: 'bold' }}
                               >
-                                Collect Interest
+                                Close Loan
                               </Button>
-                            )}
-                            <Button
-                              variant="contained"
-                              color="warning"
-                              size="small"
-                              onClick={() => handleCloseOpen(loan)}
-                              sx={{ fontWeight: 'bold' }}
-                            >
-                              Close Loan
-                            </Button>
-                            <Button
-                              variant="contained"
-                              color="error"
-                              size="small"
-                              onClick={() => handleDeleteLoan(loan.id)}
-                              sx={{ fontWeight: 'bold' }}
-                            >
-                              Delete
-                            </Button>
-                          </Box>
+                              <Button
+                                variant="contained"
+                                color="error"
+                                size="small"
+                                onClick={() => handleDeleteLoan(loan.id)}
+                                sx={{ fontWeight: 'bold' }}
+                              >
+                                Delete
+                              </Button>
+                            </Box>
+                          )}
+                          {loan.status === 'CLOSED' && (
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                              <Button 
+                                variant="outlined" 
+                                size="small" 
+                                onClick={() => handleViewPaymentsOpen(loan)}
+                                sx={{ fontWeight: 'bold' }}
+                              >
+                                View Ledger
+                              </Button>
+                              <Button 
+                                variant="contained" 
+                                color="error"
+                                size="small" 
+                                onClick={() => handleDeleteLoan(loan.id)}
+                                sx={{ fontWeight: 'bold' }}
+                              >
+                                Delete
+                              </Button>
+                            </Box>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </Box>
+          </CardContent>
+        </Card>
+      </Box>
+
+      {/* Mobile Stacked Card View */}
+      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+        {loans.length === 0 ? (
+          <Card sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
+            No loan records found.
+          </Card>
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {loans.map((loan) => (
+              <Card key={loan.id} sx={{ p: 2, borderRadius: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                    {loan.memberName}
+                  </Typography>
+                  <Chip 
+                    label={loan.status} 
+                    size="small" 
+                    color={loan.status === 'ACTIVE' ? 'primary' : 'success'} 
+                    sx={{ fontWeight: 'bold', fontSize: '0.7rem' }} 
+                  />
+                </Box>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="body2" color="text.secondary">Principal Amount</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                      ₹{loan.amount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">Interest Rate & Type</Typography>
+                    <Box sx={{ textAlign: 'right' }}>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>{loan.interestRate}% / month</Typography>
+                      <Chip 
+                        label={loan.interestType === 'MONTHLY' ? 'Monthly Collection' : 'Accumulated'} 
+                        size="small" 
+                        variant="outlined" 
+                        color={loan.interestType === 'MONTHLY' ? 'secondary' : 'default'}
+                        sx={{ fontSize: '0.6rem', height: 16, mt: 0.5, fontWeight: 'bold' }} 
+                      />
+                    </Box>
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="body2" color="text.secondary">Start Date</Typography>
+                    <Typography variant="body2">{loan.startDate}</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="body2" color="text.secondary">End Date</Typography>
+                    <Typography variant="body2">{loan.endDate || '-'}</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">Interest Status</Typography>
+                    {loan.status === 'CLOSED' ? (
+                      <Box sx={{ textAlign: 'right' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                          ₹{loan.calculatedInterest?.toLocaleString(undefined, { minimumFractionDigits: 2 })} (Paid)
+                        </Typography>
+                        <Button
+                          variant="text"
+                          size="small"
+                          onClick={() => handleViewPaymentsOpen(loan)}
+                          sx={{ p: 0, fontSize: '0.7rem', textTransform: 'none', minWidth: 0, fontWeight: 'bold' }}
+                        >
+                          View Receipts
+                        </Button>
+                      </Box>
+                    ) : (
+                      loan.interestType === 'MONTHLY' ? (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Collected:
+                          </Typography>
+                          <Button 
+                            variant="text" 
+                            size="small" 
+                            onClick={() => handleViewPaymentsOpen(loan)}
+                            sx={{ 
+                              fontWeight: 'bold', 
+                              p: 0, 
+                              minWidth: 0, 
+                              color: 'success.main',
+                              textTransform: 'none',
+                              fontSize: '0.8rem',
+                              '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' }
+                            }}
+                          >
+                            ₹{loan.collectedInterest?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </Button>
+                        </Box>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">Accumulating...</Typography>
+                      )
+                    )}
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 'bold' }}>Repayable Total</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                      {loan.totalRepayableAmount !== null ? `₹${loan.totalRepayableAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
+                    </Typography>
+                  </Box>
+
+                  {/* Actions */}
+                  <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', justifyContent: 'flex-end', mt: 1.5, pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
+                    {loan.status === 'ACTIVE' && (
+                      <>
+                        {loan.interestType === 'MONTHLY' && (
+                          <Button
+                            variant="outlined"
+                            color="success"
+                            size="small"
+                            onClick={() => handleCollectInterestOpen(loan)}
+                            sx={{ fontWeight: 'bold' }}
+                          >
+                            Collect Interest
+                          </Button>
                         )}
-                        {loan.status === 'CLOSED' && (
-                          <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Button 
-                              variant="outlined" 
-                              size="small" 
-                              onClick={() => handleViewPaymentsOpen(loan)}
-                              sx={{ fontWeight: 'bold' }}
-                            >
-                              View Ledger
-                            </Button>
-                            <Button 
-                              variant="contained" 
-                              color="error"
-                              size="small" 
-                              onClick={() => handleDeleteLoan(loan.id)}
-                              sx={{ fontWeight: 'bold' }}
-                            >
-                              Delete
-                            </Button>
-                          </Box>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                        <Button
+                          variant="outlined"
+                          color="warning"
+                          size="small"
+                          onClick={() => handleCloseOpen(loan)}
+                          sx={{ fontWeight: 'bold' }}
+                        >
+                          Close Loan
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          size="small"
+                          onClick={() => handleDeleteLoan(loan.id)}
+                          sx={{ fontWeight: 'bold' }}
+                        >
+                          Delete
+                        </Button>
+                      </>
+                    )}
+                    {loan.status === 'CLOSED' && (
+                      <>
+                        <Button 
+                          variant="outlined" 
+                          size="small" 
+                          onClick={() => handleViewPaymentsOpen(loan)}
+                          sx={{ fontWeight: 'bold' }}
+                        >
+                          View Ledger
+                        </Button>
+                        <Button 
+                          variant="outlined" 
+                          color="error"
+                          size="small" 
+                          onClick={() => handleDeleteLoan(loan.id)}
+                          sx={{ fontWeight: 'bold' }}
+                        >
+                          Delete
+                        </Button>
+                      </>
+                    )}
+                  </Box>
+                </Box>
+              </Card>
+            ))}
           </Box>
-        </CardContent>
-      </Card>
+        )}
+      </Box>
 
       {/* Dialog: Issue New Loan */}
       <Dialog open={openCreate} onClose={handleCreateClose} maxWidth="sm" fullWidth disableEnforceFocus>

@@ -15,9 +15,9 @@ const ChitRow = ({ chit, handleViewMembers, handlePendingDuesOpen, handleAssignO
           </IconButton>
         </TableCell>
         <TableCell sx={{ fontWeight: 500 }}>{chit.name}</TableCell>
-        <TableCell>₹{chit.totalAmount.toLocaleString()}</TableCell>
-        <TableCell>{chit.durationMonths} months</TableCell>
-        <TableCell>
+        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>₹{chit.totalAmount.toLocaleString()}</TableCell>
+        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{chit.durationMonths} months</TableCell>
+        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
           <Chip 
             label={`${chit.assignedMemberCount || 0} / ${chit.memberCount} Assigned`}
             color={chit.assignedMemberCount === chit.memberCount ? 'success' : 'warning'}
@@ -40,6 +40,30 @@ const ChitRow = ({ chit, handleViewMembers, handlePendingDuesOpen, handleAssignO
         <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
           <Collapse in={open} timeout="auto" unmountOnExit>
             <Box sx={{ margin: 2, p: 2, borderRadius: 2, backgroundColor: 'action.hover', border: '1px solid', borderColor: 'divider' }}>
+              {/* Mobile-only summary details */}
+              <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 1.5, mb: 2.5, pb: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>Chit Details</Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">Total Amount</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>₹{chit.totalAmount.toLocaleString()}</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">Duration</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>{chit.durationMonths} months</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">Assigned Members</Typography>
+                  <Chip 
+                    label={`${chit.assignedMemberCount || 0} / ${chit.memberCount} Assigned`}
+                    color={chit.assignedMemberCount === chit.memberCount ? 'success' : 'warning'}
+                    variant="outlined"
+                    size="small"
+                    sx={{ fontWeight: 'bold' }}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </Box>
+              </Box>
+
               <Typography variant="subtitle2" gutterBottom component="div" sx={{ fontWeight: 'bold', mb: 1.5 }}>
                 Group Actions & Management
               </Typography>
@@ -500,9 +524,9 @@ const Chits = () => {
               <TableRow sx={{ backgroundColor: 'background.default' }}>
                 <TableCell sx={{ width: 50 }} />
                 <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Total Amount</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Duration</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Members</TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, fontWeight: 'bold' }}>Total Amount</TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, fontWeight: 'bold' }}>Duration</TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, fontWeight: 'bold' }}>Members</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
               </TableRow>
             </TableHead>

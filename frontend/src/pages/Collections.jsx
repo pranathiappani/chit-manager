@@ -212,102 +212,204 @@ const Collections = () => {
       </Card>
 
       {selectedChit && selectedMonth && (
-        <Card>
-          <Box sx={{ overflowX: 'auto' }}>
-            <Table>
-              <TableHead>
-                <TableRow sx={{ backgroundColor: 'background.default' }}>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Member Name</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Amount Due</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Payment Date</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Remarks / Payment Method</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Action</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {members.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-                      No members assigned to this chit yet.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  members.map((member) => {
-                    const collection = collections[member.id];
-                    const isPaid = collection?.status === 'PAID';
-
-                    const amountDue = getAmountDue(member.id);
-                    return (
-                      <TableRow key={member.id} hover>
-                        <TableCell sx={{ fontWeight: 500 }}>{member.name}</TableCell>
-                        <TableCell>₹{amountDue?.toLocaleString()}</TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={isPaid ? 'PAID' : 'PENDING'} 
-                            color={isPaid ? 'success' : 'warning'} 
-                            size="small" 
-                          />
+        <>
+          {/* Desktop Table View */}
+          <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+            <Card>
+              <Box sx={{ overflowX: 'auto' }}>
+                <Table>
+                  <TableHead>
+                    <TableRow sx={{ backgroundColor: 'background.default' }}>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Member Name</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Amount Due</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Payment Date</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Remarks / Payment Method</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Action</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {members.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
+                          No members assigned to this chit yet.
                         </TableCell>
-                        <TableCell>{collection?.paymentDate || '-'}</TableCell>
-                        <TableCell>
+                      </TableRow>
+                    ) : (
+                      members.map((member) => {
+                        const collection = collections[member.id];
+                        const isPaid = collection?.status === 'PAID';
+
+                        const amountDue = getAmountDue(member.id);
+                        return (
+                          <TableRow key={member.id} hover>
+                            <TableCell sx={{ fontWeight: 500 }}>{member.name}</TableCell>
+                            <TableCell>₹{amountDue?.toLocaleString()}</TableCell>
+                            <TableCell>
+                              <Chip 
+                                label={isPaid ? 'PAID' : 'PENDING'} 
+                                color={isPaid ? 'success' : 'warning'} 
+                                size="small" 
+                              />
+                            </TableCell>
+                            <TableCell>{collection?.paymentDate || '-'}</TableCell>
+                            <TableCell>
+                              {isPaid ? (
+                                collection?.remarks || '-'
+                              ) : (
+                                <TextField
+                                  size="small"
+                                  placeholder="e.g. UPI, Cash, Bank..."
+                                  value={rowRemarks[member.id] || ''}
+                                  onChange={(e) => setRowRemarks(prev => ({ ...prev, [member.id]: e.target.value }))}
+                                  sx={{ width: 200 }}
+                                />
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {isPaid ? (
+                                <Button 
+                                  variant="outlined" 
+                                  color="error" 
+                                  size="small"
+                                  onClick={() => handleUnmarkPaid(member.id, collection.id)}
+                                >
+                                  Unmark Paid
+                                </Button>
+                              ) : (
+                                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                  <Button 
+                                    variant="outlined" 
+                                    color="primary" 
+                                    size="small"
+                                    onClick={() => handleMarkPaid(member.id)}
+                                  >
+                                    Mark Paid
+                                  </Button>
+                                  {(() => {
+                                    const status = getReminderStatus(parseInt(selectedMonth));
+                                    return (
+                                      <Tooltip title={status.isOverdue ? "Send Overdue Reminder (WhatsApp)" : "Send Friendly Reminder (WhatsApp)"}>
+                                        <IconButton
+                                          color={status.isOverdue ? "error" : "success"}
+                                          size="small"
+                                          onClick={() => handleSendReminder(member, amountDue)}
+                                        >
+                                          <MessageCircle size={18} />
+                                        </IconButton>
+                                      </Tooltip>
+                                    );
+                                  })()}
+                                </Box>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </Box>
+            </Card>
+          </Box>
+
+          {/* Mobile Card List View */}
+          <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+            {members.length === 0 ? (
+              <Card sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
+                No members assigned to this chit yet.
+              </Card>
+            ) : (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {members.map((member) => {
+                  const collection = collections[member.id];
+                  const isPaid = collection?.status === 'PAID';
+                  const amountDue = getAmountDue(member.id);
+
+                  return (
+                    <Card key={member.id} sx={{ p: 2, borderRadius: 2 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                          {member.name}
+                        </Typography>
+                        <Chip 
+                          label={isPaid ? 'PAID' : 'PENDING'} 
+                          color={isPaid ? 'success' : 'warning'} 
+                          size="small" 
+                        />
+                      </Box>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2" color="text.secondary">Amount Due</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>₹{amountDue?.toLocaleString()}</Typography>
+                        </Box>
+                        {isPaid && (
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography variant="body2" color="text.secondary">Payment Date</Typography>
+                            <Typography variant="body2">{collection?.paymentDate || '-'}</Typography>
+                          </Box>
+                        )}
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                          <Typography variant="body2" color="text.secondary">Remarks / Payment Method</Typography>
                           {isPaid ? (
-                            collection?.remarks || '-'
+                            <Typography variant="body2" sx={{ fontWeight: 500 }}>{collection?.remarks || '-'}</Typography>
                           ) : (
                             <TextField
                               size="small"
+                              fullWidth
                               placeholder="e.g. UPI, Cash, Bank..."
                               value={rowRemarks[member.id] || ''}
                               onChange={(e) => setRowRemarks(prev => ({ ...prev, [member.id]: e.target.value }))}
-                              sx={{ width: 200 }}
                             />
                           )}
-                        </TableCell>
-                        <TableCell>
+                        </Box>
+                        <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'flex-end', pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
                           {isPaid ? (
                             <Button 
                               variant="outlined" 
                               color="error" 
                               size="small"
                               onClick={() => handleUnmarkPaid(member.id, collection.id)}
+                              sx={{ fontWeight: 'bold' }}
                             >
                               Unmark Paid
                             </Button>
                           ) : (
-                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                              <Button 
-                                variant="outlined" 
-                                color="primary" 
-                                size="small"
-                                onClick={() => handleMarkPaid(member.id)}
-                              >
-                                Mark Paid
-                              </Button>
+                            <>
                               {(() => {
                                 const status = getReminderStatus(parseInt(selectedMonth));
                                 return (
-                                  <Tooltip title={status.isOverdue ? "Send Overdue Reminder (WhatsApp)" : "Send Friendly Reminder (WhatsApp)"}>
-                                    <IconButton
-                                      color={status.isOverdue ? "error" : "success"}
-                                      size="small"
-                                      onClick={() => handleSendReminder(member, amountDue)}
-                                    >
-                                      <MessageCircle size={18} />
-                                    </IconButton>
-                                  </Tooltip>
+                                  <Button
+                                    variant="outlined"
+                                    color={status.isOverdue ? "error" : "success"}
+                                    size="small"
+                                    onClick={() => handleSendReminder(member, amountDue)}
+                                    sx={{ fontWeight: 'bold' }}
+                                  >
+                                    WhatsApp Reminder
+                                  </Button>
                                 );
                               })()}
-                            </Box>
+                              <Button 
+                                variant="contained" 
+                                color="primary" 
+                                size="small"
+                                onClick={() => handleMarkPaid(member.id)}
+                                sx={{ fontWeight: 'bold' }}
+                              >
+                                Mark Paid
+                              </Button>
+                            </>
                           )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
+                        </Box>
+                      </Box>
+                    </Card>
+                  );
+                })}
+              </Box>
+            )}
           </Box>
-        </Card>
+        </>
       )}
     </Box>
   );
