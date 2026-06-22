@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ChitManager</string>
+    <string name="title_activity_main">ChitManager</string>
+    <string name="package_name">com.admin.chitmanager</string>
+    <string name="custom_url_scheme">com.admin.chitmanager</string>
+</resources>
