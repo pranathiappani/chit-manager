@@ -7,6 +7,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import com.chitmanager.backend.security.CryptoConverter;
+
 @Entity
 @Table(name = "members")
 @Getter
@@ -21,11 +23,19 @@ public class Member {
     private Long id;
 
     @Column(nullable = false)
+    @Convert(converter = CryptoConverter.class)
     private String name;
 
+    @Convert(converter = CryptoConverter.class)
     private String phone;
+
+    @Convert(converter = CryptoConverter.class)
     private String address;
+
+    @Convert(converter = CryptoConverter.class)
     private String nominee;
+
+    @Convert(converter = CryptoConverter.class)
     private String guarantor;
 
     @Column(nullable = false)
