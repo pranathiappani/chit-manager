@@ -14,9 +14,32 @@ import { useAuthStore, useThemeStore } from './store';
 
 const ProtectedRoute = ({ children }) => {
   const token = useAuthStore((state) => state.token);
-  if (!token) {
+  const logout = useAuthStore((state) => state.logout);
+
+  const isExpired = useMemo(() => {
+    if (!token) return true;
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return true;
+      
+      // Decode the payload part of the JWT
+      const payload = JSON.parse(atob(parts[1]));
+      if (!payload.exp) return false; // If no exp claim, assume valid
+      
+      const now = Math.floor(Date.now() / 1000);
+      return payload.exp < now;
+    } catch (e) {
+      return true; // Parse failure treats token as expired
+    }
+  }, [token]);
+
+  if (isExpired) {
+    if (token) {
+      logout();
+    }
     return <Navigate to="/login" replace />;
   }
+  
   return children;
 };
 

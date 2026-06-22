@@ -129,7 +129,6 @@ public class LoanService {
                 .multiply(timeFactor)
                 .setScale(2, RoundingMode.HALF_UP);
 
-        BigDecimal remainingInterest = totalInterestExpected;
         BigDecimal alreadyCollected = BigDecimal.ZERO;
 
         if (loan.getId() != null) {
@@ -138,6 +137,13 @@ public class LoanService {
                     .map(LoanPayment::getAmount)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
         }
+
+        // Ensure calculated interest at closure is at least the interest already collected
+        if (alreadyCollected.compareTo(totalInterestExpected) > 0) {
+            totalInterestExpected = alreadyCollected;
+        }
+
+        BigDecimal remainingInterest = totalInterestExpected;
 
         if ("MONTHLY".equals(loan.getInterestType())) {
             remainingInterest = totalInterestExpected.subtract(alreadyCollected);

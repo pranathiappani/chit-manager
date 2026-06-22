@@ -418,6 +418,7 @@ const Chits = () => {
       fetchChits(); // Refresh list to update member count
     } catch (error) {
       console.error('Failed to assign member', error);
+      alert(error.response?.data?.message || 'Failed to assign member. The chit group might be full.');
     }
   };
 

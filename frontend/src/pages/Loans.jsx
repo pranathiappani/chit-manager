@@ -173,9 +173,13 @@ const Loans = () => {
 
       const principal = Number(selectedLoan.amount);
       const rate = Number(selectedLoan.interestRate) / 100;
-      const calculatedInt = principal * rate * elapsedMonths;
+      let calculatedInt = principal * rate * elapsedMonths;
       
       const alreadyCollected = Number(selectedLoan.collectedInterest) || 0;
+      if (alreadyCollected > calculatedInt) {
+        calculatedInt = alreadyCollected;
+      }
+      
       let remainingInt = calculatedInt;
       let totalRepayable = principal + calculatedInt;
 

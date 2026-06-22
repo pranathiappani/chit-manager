@@ -44,14 +44,22 @@ public class ChitGroupController {
 
     @PostMapping("/{chitId}/members/{memberId}")
     public ResponseEntity<?> addMemberToChitGroup(@PathVariable Long chitId, @PathVariable Long memberId) {
-        chitGroupService.addMemberToChitGroup(chitId, memberId);
-        return ResponseEntity.ok("Member added to chit group successfully");
+        try {
+            chitGroupService.addMemberToChitGroup(chitId, memberId);
+            return ResponseEntity.ok(java.util.Map.of("message", "Member added to chit group successfully"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
+        }
     }
 
     @DeleteMapping("/{chitId}/members/{memberId}")
     public ResponseEntity<?> removeMemberFromChitGroup(@PathVariable Long chitId, @PathVariable Long memberId) {
-        chitGroupService.removeMemberFromChitGroup(chitId, memberId);
-        return ResponseEntity.ok("Member removed from chit group successfully");
+        try {
+            chitGroupService.removeMemberFromChitGroup(chitId, memberId);
+            return ResponseEntity.ok(java.util.Map.of("message", "Member removed from chit group successfully"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
+        }
     }
 
     @GetMapping("/{chitId}/members")

@@ -1,2 +1,27 @@
 # Project exclude paths
 /backend/target/
+
+# Private environment configurations
+*.env
+.env
+backend/.env
+frontend/.env
+
+# Local IDE and System files
+.idea/
+.vscode/
+Thumbs.db
+.DS_Store
+
+# Mobile App Build directories (ignored on main branch)
+frontend/android/
+frontend/ios/
+frontend/capacitor.config.json
+frontend/android/.gradle/
+frontend/android/build/
+frontend/android/app/build/
+frontend/android/local.properties
+frontend/android/capacitor-cordova-android-plugins/
+frontend/ios/App/build/
+frontend/ios/Pods/
+frontend/ios/App/Pods/
