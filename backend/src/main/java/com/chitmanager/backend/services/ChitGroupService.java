@@ -84,6 +84,11 @@ public class ChitGroupService {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new RuntimeException("Member not found"));
 
+        int assignedCount = chitMemberRepository.findByChitGroupId(chitGroupId).size();
+        if (assignedCount >= chitGroup.getMemberCount()) {
+            throw new RuntimeException("Cannot assign member. Chit group has already reached its maximum limit of " + chitGroup.getMemberCount() + " members.");
+        }
+
         ChitMember chitMember = new ChitMember();
         chitMember.setChitGroup(chitGroup);
         chitMember.setMember(member);
