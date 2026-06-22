@@ -1,5 +1,12 @@
 {
   "appId": "com.admin.chitmanager",
   "appName": "ChitManager",
-  "webDir": "dist"
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": true
+  },
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true
+  }
 }
