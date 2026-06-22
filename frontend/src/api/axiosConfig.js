@@ -49,8 +49,8 @@ api.interceptors.response.use(
             return api(config);
         }
 
-        // Handle 401 unauthorized
-        if (error.response && error.response.status === 401) {
+        // Handle 401 unauthorized or 403 forbidden
+        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             // Redirect to login page

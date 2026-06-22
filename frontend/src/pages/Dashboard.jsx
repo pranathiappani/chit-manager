@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Grid, Card, CardContent, Typography, Box, CircularProgress, useTheme, Table, TableBody, TableCell, TableHead, TableRow, Chip, Button } from '@mui/material';
+import { Grid, Card, CardContent, Typography, Box, CircularProgress, useTheme, Table, TableBody, TableCell, TableHead, TableRow, Chip, Button, Alert } from '@mui/material';
 import { Users, Wallet, TrendingUp, AlertCircle } from 'lucide-react';
 import api from '../api/axiosConfig';
 
@@ -26,15 +26,18 @@ const StatCard = ({ title, value, icon, color }) => (
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const theme = useTheme();
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
+        setError(null);
         const response = await api.get('/dashboard/stats');
         setStats(response.data);
-      } catch (error) {
-        console.error('Failed to fetch stats', error);
+      } catch (err) {
+        console.error('Failed to fetch stats', err);
+        setError('Could not connect to the server. Please verify the backend service is running.');
       } finally {
         setLoading(false);
       }
@@ -82,6 +85,12 @@ const Dashboard = () => {
           Reset Database
         </Button>
       </Box>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 3, fontWeight: 'bold' }}>
+          {error}
+        </Alert>
+      )}
 
       <Grid container spacing={3} sx={{ mb: 4, width: '100%' }}>
         <Grid item xs={12} sm={12} md={3} sx={{ width: { xs: '100%', md: 'auto' } }}>
