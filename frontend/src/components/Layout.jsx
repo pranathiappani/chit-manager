@@ -65,13 +65,17 @@ const Layout = () => {
         sx={{ 
           flexGrow: 1, 
           p: { xs: 2, sm: 3 }, 
-          backgroundColor: 'background.default', 
           minHeight: '100vh',
-          width: { md: `calc(100% - ${drawerWidth}px)` }
+          width: { md: `calc(100% - ${drawerWidth}px)` },
+          backgroundColor: 'background.default',
+          background: (theme) => theme.palette.mode === 'light'
+            ? 'radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.04) 0%, transparent 40%), radial-gradient(circle at 90% 90%, rgba(16, 185, 129, 0.04) 0%, transparent 40%), #f8fafc'
+            : 'radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.06) 0%, transparent 40%), radial-gradient(circle at 90% 90%, rgba(16, 185, 129, 0.06) 0%, transparent 40%), #0f172a',
+          position: 'relative',
         }}
       >
         <Toolbar />
-        <div className="fade-in-up">
+        <div className="fade-in-up" style={{ position: 'relative', zIndex: 1 }}>
           <Outlet />
         </div>
       </Box>

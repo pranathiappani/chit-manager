@@ -8,6 +8,7 @@ import com.chitmanager.backend.models.Member;
 import com.chitmanager.backend.repositories.LoanRepository;
 import com.chitmanager.backend.repositories.LoanPaymentRepository;
 import com.chitmanager.backend.repositories.MemberRepository;
+import com.chitmanager.backend.security.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,10 +33,12 @@ public class LoanService {
 
     @Transactional
     public LoanDTO recordLoan(LoanDTO dto) {
-        Member member = memberRepository.findById(dto.getMemberId())
+        String tenantId = SecurityUtils.getTenantId();
+        Member member = memberRepository.findByTenantIdAndId(tenantId, dto.getMemberId())
                 .orElseThrow(() -> new RuntimeException("Member not found"));
 
         Loan loan = new Loan();
+        loan.setTenantId(tenantId);
         loan.setMember(member);
         loan.setAmount(dto.getAmount());
         loan.setInterestRate(dto.getInterestRate());
@@ -55,7 +58,8 @@ public class LoanService {
 
     @Transactional
     public LoanDTO closeLoan(Long loanId, LocalDate endDate) {
-        Loan loan = loanRepository.findById(loanId)
+        String tenantId = SecurityUtils.getTenantId();
+        Loan loan = loanRepository.findByTenantIdAndId(tenantId, loanId)
                 .orElseThrow(() -> new RuntimeException("Loan record not found"));
 
         if (!"ACTIVE".equals(loan.getStatus())) {
@@ -68,7 +72,8 @@ public class LoanService {
 
     @Transactional
     public LoanPaymentDTO recordLoanPayment(Long loanId, LoanPaymentDTO dto) {
-        Loan loan = loanRepository.findById(loanId)
+        String tenantId = SecurityUtils.getTenantId();
+        Loan loan = loanRepository.findByTenantIdAndId(tenantId, loanId)
                 .orElseThrow(() -> new RuntimeException("Loan record not found"));
 
         if (!"ACTIVE".equals(loan.getStatus())) {
@@ -76,6 +81,7 @@ public class LoanService {
         }
 
         LoanPayment payment = new LoanPayment();
+        payment.setTenantId(tenantId);
         payment.setLoan(loan);
         payment.setAmount(dto.getAmount());
         payment.setPaymentDate(dto.getPaymentDate());
@@ -87,7 +93,12 @@ public class LoanService {
     }
 
     public List<LoanPaymentDTO> getLoanPayments(Long loanId) {
-        return loanPaymentRepository.findByLoanIdOrderByPaymentDateDesc(loanId)
+        String tenantId = SecurityUtils.getTenantId();
+        // verify ownership
+        loanRepository.findByTenantIdAndId(tenantId, loanId)
+                .orElseThrow(() -> new RuntimeException("Loan record not found"));
+
+        return loanPaymentRepository.findByTenantIdAndLoanIdOrderByPaymentDateDesc(tenantId, loanId)
                 .stream()
                 .map(this::mapPaymentToDTO)
                 .collect(Collectors.toList());
@@ -132,7 +143,7 @@ public class LoanService {
         BigDecimal alreadyCollected = BigDecimal.ZERO;
 
         if (loan.getId() != null) {
-            alreadyCollected = loanPaymentRepository.findByLoanId(loan.getId()).stream()
+            alreadyCollected = loanPaymentRepository.findByTenantIdAndLoanId(loan.getTenantId(), loan.getId()).stream()
                     .filter(p -> "INTEREST".equals(p.getPaymentType()))
                     .map(LoanPayment::getAmount)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -163,6 +174,7 @@ public class LoanService {
         if (loan.getId() != null) {
             // Record principal payment
             LoanPayment principalPay = new LoanPayment();
+            principalPay.setTenantId(loan.getTenantId());
             principalPay.setLoan(loan);
             principalPay.setAmount(loan.getAmount());
             principalPay.setPaymentDate(endDate);
@@ -174,6 +186,7 @@ public class LoanService {
             if ("MONTHLY".equals(loan.getInterestType())) {
                 if (remainingInterest.compareTo(BigDecimal.ZERO) > 0) {
                     LoanPayment finalInterestPay = new LoanPayment();
+                    finalInterestPay.setTenantId(loan.getTenantId());
                     finalInterestPay.setLoan(loan);
                     finalInterestPay.setAmount(remainingInterest);
                     finalInterestPay.setPaymentDate(endDate);
@@ -185,6 +198,7 @@ public class LoanService {
                 // ACCUMULATED interest type logs full interest collection at closure
                 if (totalInterestExpected.compareTo(BigDecimal.ZERO) > 0) {
                     LoanPayment finalInterestPay = new LoanPayment();
+                    finalInterestPay.setTenantId(loan.getTenantId());
                     finalInterestPay.setLoan(loan);
                     finalInterestPay.setAmount(totalInterestExpected);
                     finalInterestPay.setPaymentDate(endDate);
@@ -197,7 +211,8 @@ public class LoanService {
     }
 
     public List<LoanDTO> getAllLoans() {
-        return loanRepository.findAllByOrderByCreatedAtDesc()
+        String tenantId = SecurityUtils.getTenantId();
+        return loanRepository.findAllByTenantIdOrderByCreatedAtDesc(tenantId)
                 .stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
@@ -219,7 +234,7 @@ public class LoanService {
         dto.setInterestType(loan.getInterestType() != null ? loan.getInterestType() : "ACCUMULATED");
 
         if (loan.getId() != null) {
-            BigDecimal collected = loanPaymentRepository.findByLoanId(loan.getId()).stream()
+            BigDecimal collected = loanPaymentRepository.findByTenantIdAndLoanId(loan.getTenantId(), loan.getId()).stream()
                     .filter(p -> "INTEREST".equals(p.getPaymentType()))
                     .map(LoanPayment::getAmount)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -233,8 +248,12 @@ public class LoanService {
 
     @Transactional
     public void deleteLoan(Long id) {
-        loanPaymentRepository.deleteAll(loanPaymentRepository.findByLoanId(id));
-        loanRepository.deleteById(id);
+        String tenantId = SecurityUtils.getTenantId();
+        Loan loan = loanRepository.findByTenantIdAndId(tenantId, id)
+                .orElseThrow(() -> new RuntimeException("Loan record not found"));
+
+        loanPaymentRepository.deleteAll(loanPaymentRepository.findByTenantIdAndLoanId(tenantId, id));
+        loanRepository.delete(loan);
     }
 
     private LoanPaymentDTO mapPaymentToDTO(LoanPayment p) {

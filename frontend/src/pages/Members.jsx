@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Card, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Grid, Chip, Divider, CircularProgress, Collapse, InputAdornment } from '@mui/material';
+import { Box, Card, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Grid, Chip, Divider, CircularProgress, Collapse, InputAdornment, useMediaQuery, useTheme } from '@mui/material';
 import { useForm } from 'react-hook-form';
-import { Plus, Edit2, Trash2, Eye, Landmark, Wallet, ChevronDown, ChevronUp, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, Eye, Landmark, Wallet, ChevronDown, ChevronUp, Search, X } from 'lucide-react';
 import api from '../api/axiosConfig';
 
 const MobileMemberRow = ({ member, handleViewDetails, handleEditClick, handleDeleteMember }) => {
@@ -85,6 +85,8 @@ const MobileMemberRow = ({ member, handleViewDetails, handleEditClick, handleDel
 };
 
 const Members = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -95,6 +97,13 @@ const Members = () => {
   const [editingMember, setEditingMember] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
+
+  const { ref: nameRef, ...nameRegister } = register('name', { required: 'Name is required' });
+  const { ref: phoneRef, ...phoneRegister } = register('phone', { required: 'Phone is required' });
+  const { ref: joiningDateRef, ...joiningDateRegister } = register('joiningDate', { required: 'Joining date is required' });
+  const { ref: nomineeRef, ...nomineeRegister } = register('nominee');
+  const { ref: guarantorRef, ...guarantorRegister } = register('guarantor');
+  const { ref: addressRef, ...addressRegister } = register('address');
 
   const filteredMembers = members.filter(member =>
     member.name && member.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -308,74 +317,208 @@ const Members = () => {
       </Box>
 
       {/* Add Member Modal */}
-      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingMember ? 'Edit Member Details' : 'Add New Member'}</DialogTitle>
+      {/* Add Member Modal */}
+      <Dialog 
+        open={open} 
+        onClose={handleClose} 
+        maxWidth="sm" 
+        fullWidth
+      >
+        <DialogTitle sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          fontWeight: 'bold',
+          px: { xs: 3, sm: 4 },
+          py: 2.5,
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          backgroundColor: 'background.paper'
+        }}>
+          <span>{editingMember ? 'Edit Member Details' : 'Add New Member'}</span>
+          <IconButton onClick={handleClose} color="inherit" size="small">
+            <X size={20} />
+          </IconButton>
+        </DialogTitle>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <DialogContent dividers>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Full Name"
-                  {...register('name', { required: 'Name is required' })}
-                  inputRef={register('name').ref}
-                  error={!!errors.name}
-                  helperText={errors.name?.message}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Phone Number"
-                  {...register('phone', { required: 'Phone is required' })}
-                  inputRef={register('phone').ref}
-                  error={!!errors.phone}
-                  helperText={errors.phone?.message}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Joining Date"
-                  type="date"
-                  InputLabelProps={{ shrink: true }}
-                  {...register('joiningDate', { required: 'Joining date is required' })}
-                  inputRef={register('joiningDate').ref}
-                  error={!!errors.joiningDate}
-                  helperText={errors.joiningDate?.message}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Nominee Name"
-                  {...register('nominee')}
-                  inputRef={register('nominee').ref}
-                />
+          <DialogContent sx={{ px: { xs: 3, sm: 4 }, py: 4 }}>
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Box sx={{ width: '100%' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, display: 'block', mb: 1, color: 'text.secondary' }}>
+                    Full Name *
+                  </Typography>
+                  <TextField
+                    sx={{
+                      width: '100%',
+                      '& .MuiInputBase-root': { width: '100% !important' },
+                      '& .MuiOutlinedInput-root': { width: '100% !important' },
+                      '& .MuiInputBase-input': { width: '100% !important' }
+                    }}
+                    InputProps={{ sx: { width: '100%' } }}
+                    inputProps={{ style: { width: '100%' } }}
+                    fullWidth
+                    placeholder="e.g. John Doe"
+                    inputRef={nameRef}
+                    {...nameRegister}
+                    error={!!errors.name}
+                    helperText={errors.name?.message}
+                  />
+                </Box>
               </Grid>
               <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Guarantor Name"
-                  {...register('guarantor')}
-                  inputRef={register('guarantor').ref}
-                />
+                <Box sx={{ width: '100%' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, display: 'block', mb: 1, color: 'text.secondary' }}>
+                    Phone Number *
+                  </Typography>
+                  <TextField
+                    sx={{
+                      width: '100%',
+                      '& .MuiInputBase-root': { width: '100% !important' },
+                      '& .MuiOutlinedInput-root': { width: '100% !important' },
+                      '& .MuiInputBase-input': { width: '100% !important' }
+                    }}
+                    InputProps={{ sx: { width: '100%' } }}
+                    inputProps={{ style: { width: '100%' } }}
+                    fullWidth
+                    placeholder="e.g. 9876543210"
+                    inputRef={phoneRef}
+                    {...phoneRegister}
+                    error={!!errors.phone}
+                    helperText={errors.phone?.message}
+                  />
+                </Box>
               </Grid>
               <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Address"
-                  multiline
-                  rows={2}
-                  {...register('address')}
-                  inputRef={register('address').ref}
-                />
+                <Box sx={{ width: '100%' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, display: 'block', mb: 1, color: 'text.secondary' }}>
+                    Joining Date *
+                  </Typography>
+                  <TextField
+                    sx={{
+                      width: '100%',
+                      '& .MuiInputBase-root': { width: '100% !important' },
+                      '& .MuiOutlinedInput-root': { width: '100% !important' },
+                      '& .MuiInputBase-input': { 
+                        width: '100% !important',
+                        minWidth: '100% !important'
+                      }
+                    }}
+                    InputProps={{ 
+                      sx: { 
+                        width: '100%',
+                        '& input': {
+                          width: '100% !important',
+                          minWidth: '100% !important'
+                        }
+                      } 
+                    }}
+                    inputProps={{ 
+                      style: { 
+                        width: '100%',
+                        minWidth: '100%'
+                      } 
+                    }}
+                    fullWidth
+                    type="date"
+                    inputRef={joiningDateRef}
+                    {...joiningDateRegister}
+                    error={!!errors.joiningDate}
+                    helperText={errors.joiningDate?.message}
+                  />
+                </Box>
+              </Grid>
+              <Grid item xs={12}>
+                <Box sx={{ width: '100%' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, display: 'block', mb: 1, color: 'text.secondary' }}>
+                    Nominee Name
+                  </Typography>
+                  <TextField
+                    sx={{
+                      width: '100%',
+                      '& .MuiInputBase-root': { width: '100% !important' },
+                      '& .MuiOutlinedInput-root': { width: '100% !important' },
+                      '& .MuiInputBase-input': { width: '100% !important' }
+                    }}
+                    InputProps={{ sx: { width: '100%' } }}
+                    inputProps={{ style: { width: '100%' } }}
+                    fullWidth
+                    placeholder="e.g. Jane Doe"
+                    inputRef={nomineeRef}
+                    {...nomineeRegister}
+                  />
+                </Box>
+              </Grid>
+              <Grid item xs={12}>
+                <Box sx={{ width: '100%' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, display: 'block', mb: 1, color: 'text.secondary' }}>
+                    Guarantor Name
+                  </Typography>
+                  <TextField
+                    sx={{
+                      width: '100%',
+                      '& .MuiInputBase-root': { width: '100% !important' },
+                      '& .MuiOutlinedInput-root': { width: '100% !important' },
+                      '& .MuiInputBase-input': { width: '100% !important' }
+                    }}
+                    InputProps={{ sx: { width: '100%' } }}
+                    inputProps={{ style: { width: '100%' } }}
+                    fullWidth
+                    placeholder="e.g. Robert Smith"
+                    inputRef={guarantorRef}
+                    {...guarantorRegister}
+                  />
+                </Box>
+              </Grid>
+              <Grid item xs={12}>
+                <Box sx={{ width: '100%' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, display: 'block', mb: 1, color: 'text.secondary' }}>
+                    Address
+                  </Typography>
+                  <TextField
+                    sx={{
+                      width: '100%',
+                      '& .MuiInputBase-root': { width: '100% !important' },
+                      '& .MuiOutlinedInput-root': { width: '100% !important' },
+                      '& .MuiInputBase-input': { width: '100% !important' }
+                    }}
+                    InputProps={{ sx: { width: '100%' } }}
+                    inputProps={{ style: { width: '100%' } }}
+                    fullWidth
+                    placeholder="Enter physical address..."
+                    multiline
+                    rows={3}
+                    inputRef={addressRef}
+                    {...addressRegister}
+                  />
+                </Box>
               </Grid>
             </Grid>
           </DialogContent>
-          <DialogActions sx={{ p: 2 }}>
-            <Button onClick={handleClose} color="inherit" disabled={submitting}>Cancel</Button>
-            <Button type="submit" variant="contained" color="primary" disabled={submitting}>
+          <DialogActions sx={{ 
+            px: { xs: 3, sm: 4 }, 
+            py: 2.5, 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            borderTop: '1px solid', 
+            borderColor: 'divider',
+            backgroundColor: 'background.paper'
+          }}>
+            <Button 
+              onClick={handleClose} 
+              color="inherit" 
+              disabled={submitting}
+              sx={{ fontWeight: 'bold' }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit" 
+              variant="contained" 
+              color="primary" 
+              disabled={submitting}
+              sx={{ px: 4 }}
+            >
               {editingMember ? (submitting ? 'Saving...' : 'Save Changes') : (submitting ? 'Adding...' : 'Add Member')}
             </Button>
           </DialogActions>
@@ -385,8 +528,10 @@ const Members = () => {
       {/* View Portfolio Dialog */}
       <Dialog open={detailsOpen} onClose={handleDetailsClose} maxWidth="md" fullWidth>
         <DialogTitle sx={{ fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1.5 }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>Member Portfolio & History</Typography>
-          <Button onClick={handleDetailsClose} color="inherit" size="small">Close</Button>
+          <span>Member Portfolio & History</span>
+          <IconButton onClick={handleDetailsClose} color="inherit" size="small">
+            <X size={20} />
+          </IconButton>
         </DialogTitle>
         <DialogContent dividers sx={{ backgroundColor: 'background.default', p: 3 }}>
           {loadingDetails && (
@@ -399,7 +544,7 @@ const Members = () => {
           {!loadingDetails && selectedMemberDetails && (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               {/* Member Profile Card */}
-              <Card sx={{ p: 2.5, backgroundColor: 'background.paper', borderRadius: 3 }}>
+              <Card sx={{ p: 2.5, backgroundColor: 'background.paper', borderRadius: 2 }}>
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={6}>
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>Full Name</Typography>

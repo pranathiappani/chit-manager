@@ -6,6 +6,7 @@ import com.chitmanager.backend.models.ChitGroupStatus;
 import com.chitmanager.backend.models.ChitMember;
 import com.chitmanager.backend.models.Member;
 import com.chitmanager.backend.repositories.*;
+import com.chitmanager.backend.security.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,18 +43,22 @@ public class ChitGroupService {
     private ProfitCalculationService profitCalculationService;
 
     public List<ChitGroupDTO> getAllChitGroups() {
-        return chitGroupRepository.findAll().stream().map(this::mapToDTO).collect(Collectors.toList());
+        String tenantId = SecurityUtils.getTenantId();
+        return chitGroupRepository.findAllByTenantId(tenantId).stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
     public ChitGroupDTO getChitGroupById(Long id) {
-        ChitGroup chitGroup = chitGroupRepository.findById(id)
+        String tenantId = SecurityUtils.getTenantId();
+        ChitGroup chitGroup = chitGroupRepository.findByTenantIdAndId(tenantId, id)
                 .orElseThrow(() -> new RuntimeException("Chit group not found"));
         return mapToDTO(chitGroup);
     }
 
     @Transactional
     public ChitGroupDTO createChitGroup(ChitGroupDTO dto) {
+        String tenantId = SecurityUtils.getTenantId();
         ChitGroup chitGroup = new ChitGroup();
+        chitGroup.setTenantId(tenantId);
         chitGroup.setName(dto.getName());
         chitGroup.setTotalAmount(dto.getTotalAmount());
         chitGroup.setDurationMonths(dto.getDurationMonths());
@@ -78,18 +83,20 @@ public class ChitGroupService {
 
     @Transactional
     public void addMemberToChitGroup(Long chitGroupId, Long memberId) {
-        ChitGroup chitGroup = chitGroupRepository.findById(chitGroupId)
+        String tenantId = SecurityUtils.getTenantId();
+        ChitGroup chitGroup = chitGroupRepository.findByTenantIdAndId(tenantId, chitGroupId)
                 .orElseThrow(() -> new RuntimeException("Chit group not found"));
                 
-        Member member = memberRepository.findById(memberId)
+        Member member = memberRepository.findByTenantIdAndId(tenantId, memberId)
                 .orElseThrow(() -> new RuntimeException("Member not found"));
 
-        int assignedCount = chitMemberRepository.findByChitGroupId(chitGroupId).size();
+        int assignedCount = chitMemberRepository.findByTenantIdAndChitGroupId(tenantId, chitGroupId).size();
         if (assignedCount >= chitGroup.getMemberCount()) {
             throw new RuntimeException("Cannot assign member. Chit group has already reached its maximum limit of " + chitGroup.getMemberCount() + " members.");
         }
 
         ChitMember chitMember = new ChitMember();
+        chitMember.setTenantId(tenantId);
         chitMember.setChitGroup(chitGroup);
         chitMember.setMember(member);
         
@@ -98,15 +105,17 @@ public class ChitGroupService {
 
     @Transactional
     public void removeMemberFromChitGroup(Long chitGroupId, Long memberIdOrChitMemberId) {
+        String tenantId = SecurityUtils.getTenantId();
+        
         // Try to find by ChitMember ID first
-        java.util.Optional<ChitMember> chitMemberOpt = chitMemberRepository.findById(memberIdOrChitMemberId);
+        java.util.Optional<ChitMember> chitMemberOpt = chitMemberRepository.findByTenantIdAndId(tenantId, memberIdOrChitMemberId);
         if (chitMemberOpt.isPresent() && chitMemberOpt.get().getChitGroup().getId().equals(chitGroupId)) {
             chitMemberRepository.delete(chitMemberOpt.get());
             return;
         }
 
         // Fallback: search by memberId
-        List<ChitMember> memberships = chitMemberRepository.findByChitGroupId(chitGroupId);
+        List<ChitMember> memberships = chitMemberRepository.findByTenantIdAndChitGroupId(tenantId, chitGroupId);
         ChitMember target = memberships.stream()
                 .filter(cm -> cm.getMember().getId().equals(memberIdOrChitMemberId))
                 .findFirst()
@@ -116,39 +125,46 @@ public class ChitGroupService {
     }
 
     public List<Member> getChitGroupMembers(Long chitGroupId) {
-        List<ChitMember> chitMembers = chitMemberRepository.findByChitGroupId(chitGroupId);
+        String tenantId = SecurityUtils.getTenantId();
+        List<ChitMember> chitMembers = chitMemberRepository.findByTenantIdAndChitGroupId(tenantId, chitGroupId);
         return chitMembers.stream().map(ChitMember::getMember).collect(Collectors.toList());
     }
 
     public List<ChitMember> getChitMembers(Long chitGroupId) {
-        return chitMemberRepository.findByChitGroupId(chitGroupId);
+        String tenantId = SecurityUtils.getTenantId();
+        return chitMemberRepository.findByTenantIdAndChitGroupId(tenantId, chitGroupId);
     }
 
     @Transactional
     public void deleteChitGroup(Long id) {
+        String tenantId = SecurityUtils.getTenantId();
+        ChitGroup chitGroup = chitGroupRepository.findByTenantIdAndId(tenantId, id)
+                .orElseThrow(() -> new RuntimeException("Chit group not found"));
+                
         // 1. Delete all collections belonging to this chit group
-        collectionRepository.deleteAll(collectionRepository.findByChitGroupId(id));
+        collectionRepository.deleteAll(collectionRepository.findByTenantIdAndChitGroupId(tenantId, id));
         
         // 2. Delete all actual payouts belonging to this chit group
-        actualPayoutRepository.deleteAll(actualPayoutRepository.findByChitGroupIdOrderByPayoutDateAsc(id));
+        actualPayoutRepository.deleteAll(actualPayoutRepository.findByTenantIdAndChitGroupIdOrderByPayoutDateAsc(tenantId, id));
         
         // 3. Delete all expected payout plans belonging to this chit group
-        payoutPlanRepository.deleteAll(payoutPlanRepository.findByChitGroupIdOrderByMonthNumberAsc(id));
+        payoutPlanRepository.deleteAll(payoutPlanRepository.findByTenantIdAndChitGroupIdOrderByMonthNumberAsc(tenantId, id));
         
         // 4. Delete all member associations belonging to this chit group
-        chitMemberRepository.deleteAll(chitMemberRepository.findByChitGroupId(id));
+        chitMemberRepository.deleteAll(chitMemberRepository.findByTenantIdAndChitGroupId(tenantId, id));
         
         // 5. Delete the chit group itself
-        chitGroupRepository.deleteById(id);
+        chitGroupRepository.delete(chitGroup);
     }
 
     public Map<String, Object> getPendingDues(Long chitGroupId) {
-        ChitGroup chitGroup = chitGroupRepository.findById(chitGroupId)
+        String tenantId = SecurityUtils.getTenantId();
+        ChitGroup chitGroup = chitGroupRepository.findByTenantIdAndId(tenantId, chitGroupId)
                 .orElseThrow(() -> new RuntimeException("Chit group not found"));
 
         List<ChitMember> chitMembers = getChitMembers(chitGroupId);
-        List<com.chitmanager.backend.models.ActualPayout> payouts = actualPayoutRepository.findByChitGroupIdOrderByPayoutDateAsc(chitGroupId);
-        List<com.chitmanager.backend.models.Collection> collections = collectionRepository.findByChitGroupId(chitGroupId);
+        List<com.chitmanager.backend.models.ActualPayout> payouts = actualPayoutRepository.findByTenantIdAndChitGroupIdOrderByPayoutDateAsc(tenantId, chitGroupId);
+        List<com.chitmanager.backend.models.Collection> collections = collectionRepository.findByTenantIdAndChitGroupId(tenantId, chitGroupId);
 
         // Determine current month index based on calendar time
         int currentMonth = 1;
@@ -288,7 +304,7 @@ public class ChitGroupService {
         dto.setEstimatedProfit(chitGroup.getEstimatedProfit());
         dto.setActualProfit(chitGroup.getActualProfit());
         dto.setProfitCalculated(chitGroup.getProfitCalculated());
-        dto.setAssignedMemberCount(chitMemberRepository.findByChitGroupId(chitGroup.getId()).size());
+        dto.setAssignedMemberCount(chitMemberRepository.findByTenantIdAndChitGroupId(chitGroup.getTenantId(), chitGroup.getId()).size());
         return dto;
     }
 }

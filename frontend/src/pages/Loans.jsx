@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Card, CardContent, Typography, Grid, Table, TableBody, TableCell, TableHead, TableRow, MenuItem, Select, FormControl, InputLabel, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Chip, Divider, CircularProgress } from '@mui/material';
-import { Landmark, ArrowUpRight, CheckCircle, Clock, Percent, DollarSign, Calendar } from 'lucide-react';
+import { Box, Card, CardContent, Typography, Grid, Table, TableBody, TableCell, TableHead, TableRow, MenuItem, Select, FormControl, InputLabel, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Chip, Divider, CircularProgress, IconButton, Collapse, useMediaQuery, useTheme, InputAdornment } from '@mui/material';
+import { Landmark, ArrowUpRight, CheckCircle, Clock, Percent, DollarSign, Calendar, ChevronUp, ChevronDown, Search, X } from 'lucide-react';
 import api from '../api/axiosConfig';
 
 const StatCard = ({ title, value, icon, color }) => (
@@ -23,7 +23,49 @@ const StatCard = ({ title, value, icon, color }) => (
   </Card>
 );
 
+const MobileRepaymentCard = ({ payment }) => {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <Card sx={{ p: 2, mb: 1.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', boxShadow: 'none', backgroundColor: 'background.paper' }}>
+      <Box 
+        onClick={() => setExpanded(!expanded)} 
+        sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+      >
+        <Box>
+          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
+            {payment.paymentDate}
+          </Typography>
+          <Chip 
+            label={payment.paymentType} 
+            size="small" 
+            color={payment.paymentType === 'PRINCIPAL' ? 'primary' : 'success'} 
+            sx={{ fontWeight: 'bold', fontSize: '0.65rem', height: 18, mt: 0.5 }}
+          />
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: payment.paymentType === 'PRINCIPAL' ? 'primary.main' : 'success.main' }}>
+            ₹{payment.amount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </Typography>
+          <IconButton size="small">
+            {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </IconButton>
+        </Box>
+      </Box>
+      <Collapse in={expanded} timeout="auto" unmountOnExit>
+        <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>Remarks</Typography>
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>{payment.remarks || '-'}</Typography>
+        </Box>
+      </Collapse>
+    </Card>
+  );
+};
+
 const Loans = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [searchQueryRepayments, setSearchQueryRepayments] = useState('');
   const [loans, setLoans] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -305,6 +347,7 @@ const Loans = () => {
     setOpenPaymentsLog(false);
     setPayments([]);
     setPaymentsLoan(null);
+    setSearchQueryRepayments('');
   };
 
   return (
@@ -692,61 +735,83 @@ const Loans = () => {
 
       {/* Dialog: Issue New Loan */}
       <Dialog open={openCreate} onClose={handleCreateClose} maxWidth="sm" fullWidth disableEnforceFocus>
-        <DialogTitle sx={{ fontWeight: 'bold' }}>Issue New Loan</DialogTitle>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 'bold' }}>
+          <span>Issue New Loan</span>
+          <IconButton onClick={handleCreateClose} color="inherit" size="small">
+            <X size={20} />
+          </IconButton>
+        </DialogTitle>
         <form onSubmit={handleCreateSubmit}>
           <DialogContent dividers>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 1 }}>
-              {/* Member Selection - FULL WIDTH (BIGGER!) */}
-              <FormControl fullWidth required>
-                <InputLabel id="member-select-label">Select Borrower Member</InputLabel>
-                <Select
-                  labelId="member-select-label"
-                  label="Select Borrower Member"
-                  value={newLoan.memberId}
-                  onChange={(e) => setNewLoan({ ...newLoan, memberId: e.target.value })}
-                >
-                  <MenuItem value="" disabled>-- Select Borrower Member --</MenuItem>
-                  {members.length === 0 ? (
-                    <MenuItem disabled value="">No members found. Please add a member first.</MenuItem>
-                  ) : (
-                    members.map(m => (
-                      <MenuItem key={m.id} value={m.id}>{m.name} ({m.phone})</MenuItem>
-                    ))
-                  )}
-                </Select>
-              </FormControl>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
+              {/* Member Selection */}
+              <Box sx={{ width: '100%' }}>
+                <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                  Select Borrower Member *
+                </Typography>
+                <FormControl fullWidth sx={{ width: '100%' }} size="small">
+                  <Select
+                    sx={{ width: '100%' }}
+                    value={newLoan.memberId}
+                    onChange={(e) => setNewLoan({ ...newLoan, memberId: e.target.value })}
+                    displayEmpty
+                  >
+                    <MenuItem value="" disabled>-- Select Borrower Member --</MenuItem>
+                    {members.length === 0 ? (
+                      <MenuItem disabled value="">No members found. Please add a member first.</MenuItem>
+                    ) : (
+                      members.map(m => (
+                        <MenuItem key={m.id} value={m.id}>{m.name} ({m.phone})</MenuItem>
+                      ))
+                    )}
+                  </Select>
+                </FormControl>
+              </Box>
 
-              {/* Principal Amount and Interest Rate - SIDE BY SIDE */}
-              <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+              {/* Principal Amount */}
+              <Box sx={{ width: '100%' }}>
+                <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                  Principal Amount (₹) *
+                </Typography>
                 <TextField
+                  sx={{ width: '100%' }}
                   fullWidth
                   required
                   type="number"
-                  label="Principal Amount (₹)"
+                  placeholder="e.g. 50000"
                   value={newLoan.amount}
                   onChange={(e) => setNewLoan({ ...newLoan, amount: e.target.value })}
-                  InputLabelProps={{ shrink: true }}
+                  size="small"
                 />
+              </Box>
+
+              {/* Interest Rate */}
+              <Box sx={{ width: '100%' }}>
+                <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                  Monthly Interest Rate (%) *
+                </Typography>
                 <TextField
+                  sx={{ width: '100%' }}
                   fullWidth
                   required
                   type="number"
                   inputProps={{ step: "0.1" }}
-                  label="Monthly Interest Rate (%)"
+                  placeholder="e.g. 2.0"
                   value={newLoan.interestRate}
                   onChange={(e) => setNewLoan({ ...newLoan, interestRate: e.target.value })}
                   helperText="e.g. 2.0 for 2% simple interest per month"
-                  InputLabelProps={{ shrink: true }}
+                  size="small"
                 />
               </Box>
 
-              {/* Interest Payment Type and Start Date - SIDE BY SIDE */}
-              <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
-                <FormControl fullWidth required sx={{ flex: 1 }}>
-                  <InputLabel id="interest-type-label">Interest Payment Type</InputLabel>
+              {/* Interest Payment Type */}
+              <Box sx={{ width: '100%' }}>
+                <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                  Interest Payment Type *
+                </Typography>
+                <FormControl fullWidth sx={{ width: '100%' }} size="small">
                   <Select
-                    labelId="interest-type-label"
-                    label="Interest Payment Type"
+                    sx={{ width: '100%' }}
                     value={newLoan.interestType}
                     onChange={(e) => setNewLoan({ ...newLoan, interestType: e.target.value })}
                   >
@@ -754,28 +819,40 @@ const Loans = () => {
                     <MenuItem value="MONTHLY">Monthly Collection (Interest collected month-by-month)</MenuItem>
                   </Select>
                 </FormControl>
+              </Box>
+
+              {/* Start Date */}
+              <Box sx={{ width: '100%' }}>
+                <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                  Loan Start Date *
+                </Typography>
                 <TextField
+                  sx={{ width: '100%' }}
                   fullWidth
                   required
                   type="date"
-                  label="Loan Start Date"
-                  InputLabelProps={{ shrink: true }}
                   value={newLoan.startDate}
                   onChange={(e) => setNewLoan({ ...newLoan, startDate: e.target.value })}
-                  sx={{ flex: 1 }}
+                  size="small"
                 />
               </Box>
 
-              {/* Remarks - FULL WIDTH */}
-              <TextField
-                fullWidth
-                label="Remarks / Collateral Details (Optional)"
-                multiline
-                rows={2}
-                value={newLoan.remarks}
-                onChange={(e) => setNewLoan({ ...newLoan, remarks: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-              />
+              {/* Remarks */}
+              <Box sx={{ width: '100%' }}>
+                <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                  Remarks / Collateral Details (Optional)
+                </Typography>
+                <TextField
+                  sx={{ width: '100%' }}
+                  fullWidth
+                  placeholder="e.g. Gold jewelry collateral"
+                  multiline
+                  rows={2}
+                  value={newLoan.remarks}
+                  onChange={(e) => setNewLoan({ ...newLoan, remarks: e.target.value })}
+                  size="small"
+                />
+              </Box>
             </Box>
           </DialogContent>
           <DialogActions sx={{ p: 2 }}>
@@ -789,7 +866,12 @@ const Loans = () => {
 
       {/* Dialog: Close Loan */}
       <Dialog open={openClose} onClose={handleCloseClose} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 'bold' }}>Close Loan Record</DialogTitle>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 'bold' }}>
+          <span>Close Loan Record</span>
+          <IconButton onClick={handleCloseClose} color="inherit" size="small">
+            <X size={20} />
+          </IconButton>
+        </DialogTitle>
         <form onSubmit={handleCloseSubmit}>
           <DialogContent dividers>
             {selectedLoan && (
@@ -825,15 +907,20 @@ const Loans = () => {
                 </Grid>
 
                 <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    required
-                    type="date"
-                    label="Repayment / Closure Date"
-                    InputLabelProps={{ shrink: true }}
-                    value={closeDate}
-                    onChange={(e) => setCloseDate(e.target.value)}
-                  />
+                  <Box sx={{ width: '100%' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                      Repayment / Closure Date *
+                    </Typography>
+                    <TextField
+                      sx={{ width: '100%' }}
+                      fullWidth
+                      required
+                      type="date"
+                      value={closeDate}
+                      onChange={(e) => setCloseDate(e.target.value)}
+                      size="small"
+                    />
+                  </Box>
                 </Grid>
 
                 {/* Real-time Calculation Preview */}
@@ -927,7 +1014,12 @@ const Loans = () => {
 
       {/* Dialog: Collect Interest */}
       <Dialog open={openCollectInterest} onClose={handleCollectInterestClose} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 'bold' }}>Collect Monthly Interest</DialogTitle>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 'bold' }}>
+          <span>Collect Monthly Interest</span>
+          <IconButton onClick={handleCollectInterestClose} color="inherit" size="small">
+            <X size={20} />
+          </IconButton>
+        </DialogTitle>
         <form onSubmit={handleCollectInterestSubmit}>
           <DialogContent dividers>
             {selectedLoan && (
@@ -942,34 +1034,52 @@ const Loans = () => {
                   </Box>
                 </Grid>
                 <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    required
-                    type="number"
-                    label="Interest Amount (₹)"
-                    value={interestPayment.amount}
-                    onChange={(e) => setInterestPayment({ ...interestPayment, amount: e.target.value })}
-                  />
+                  <Box sx={{ width: '100%' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                      Interest Amount (₹) *
+                    </Typography>
+                    <TextField
+                      sx={{ width: '100%' }}
+                      fullWidth
+                      required
+                      type="number"
+                      placeholder="e.g. 1000"
+                      value={interestPayment.amount}
+                      onChange={(e) => setInterestPayment({ ...interestPayment, amount: e.target.value })}
+                      size="small"
+                    />
+                  </Box>
                 </Grid>
                 <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    required
-                    type="date"
-                    label="Collection Date"
-                    InputLabelProps={{ shrink: true }}
-                    value={interestPayment.paymentDate}
-                    onChange={(e) => setInterestPayment({ ...interestPayment, paymentDate: e.target.value })}
-                  />
+                  <Box sx={{ width: '100%' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                      Collection Date *
+                    </Typography>
+                    <TextField
+                      sx={{ width: '100%' }}
+                      fullWidth
+                      required
+                      type="date"
+                      value={interestPayment.paymentDate}
+                      onChange={(e) => setInterestPayment({ ...interestPayment, paymentDate: e.target.value })}
+                      size="small"
+                    />
+                  </Box>
                 </Grid>
                 <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Remarks"
-                    placeholder="e.g. Month 1 collection"
-                    value={interestPayment.remarks}
-                    onChange={(e) => setInterestPayment({ ...interestPayment, remarks: e.target.value })}
-                  />
+                  <Box sx={{ width: '100%' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                      Remarks
+                    </Typography>
+                    <TextField
+                      sx={{ width: '100%' }}
+                      fullWidth
+                      placeholder="e.g. Month 1 collection"
+                      value={interestPayment.remarks}
+                      onChange={(e) => setInterestPayment({ ...interestPayment, remarks: e.target.value })}
+                      size="small"
+                    />
+                  </Box>
                 </Grid>
               </Grid>
             )}
@@ -984,15 +1094,20 @@ const Loans = () => {
       {/* Dialog: View Payments Ledger / Collections Log */}
       <Dialog open={openPaymentsLog} onClose={handleViewPaymentsClose} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>Repayments Ledger</span>
-          {paymentsLoan && (
-            <Chip 
-              label={paymentsLoan.memberName} 
-              size="small" 
-              color="primary" 
-              sx={{ fontWeight: 'bold' }} 
-            />
-          )}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <span>Repayments Ledger</span>
+            {paymentsLoan && (
+              <Chip 
+                label={paymentsLoan.memberName} 
+                size="small" 
+                color="primary" 
+                sx={{ fontWeight: 'bold' }} 
+              />
+            )}
+          </Box>
+          <IconButton onClick={handleViewPaymentsClose} color="inherit" size="small">
+            <X size={20} />
+          </IconButton>
         </DialogTitle>
         <DialogContent dividers sx={{ p: 0 }}>
           {paymentsLoan && (
@@ -1013,44 +1128,93 @@ const Loans = () => {
               </Grid>
             </Box>
           )}
-          <Box sx={{ overflowX: 'auto', width: '100%' }}>
-            <Table size="small" sx={{ minWidth: 450 }}>
-              <TableHead>
-                <TableRow sx={{ backgroundColor: 'background.default' }}>
-                  <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Payment Date</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Type</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Amount</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Remarks</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {payments.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} align="center" sx={{ py: 3, color: 'text.secondary' }}>
-                      No collections logged yet for this loan.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  payments.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell sx={{ py: 1.5 }}>{p.paymentDate}</TableCell>
-                      <TableCell sx={{ py: 1.5 }}>
-                        <Chip 
-                          label={p.paymentType} 
-                          size="small" 
-                          color={p.paymentType === 'PRINCIPAL' ? 'primary' : 'success'} 
-                          sx={{ fontWeight: 'bold', fontSize: '0.65rem', height: 20 }}
-                        />
-                      </TableCell>
-                      <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>
-                        ₹{p.amount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </TableCell>
-                      <TableCell sx={{ color: 'text.secondary', py: 1.5 }}>{p.remarks || '-'}</TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+          
+          <Box sx={{ p: 2 }}>
+            {/* Search Bar */}
+            <TextField
+              fullWidth
+              variant="outlined"
+              placeholder="Search by date, type, remarks..."
+              value={searchQueryRepayments}
+              onChange={(e) => setSearchQueryRepayments(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search size={18} color="#888" />
+                  </InputAdornment>
+                ),
+              }}
+              size="small"
+              sx={{ mb: 2 }}
+            />
+
+            {(() => {
+              const filteredPayments = payments.filter(p =>
+                (p.paymentDate && p.paymentDate.toLowerCase().includes(searchQueryRepayments.toLowerCase())) ||
+                (p.paymentType && p.paymentType.toLowerCase().includes(searchQueryRepayments.toLowerCase())) ||
+                (p.remarks && p.remarks.toLowerCase().includes(searchQueryRepayments.toLowerCase()))
+              );
+
+              if (payments.length === 0) {
+                return (
+                  <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center', fontStyle: 'italic' }}>
+                    No collections logged yet for this loan.
+                  </Typography>
+                );
+              }
+
+              if (filteredPayments.length === 0) {
+                return (
+                  <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center', fontStyle: 'italic' }}>
+                    No payments found matching "{searchQueryRepayments}"
+                  </Typography>
+                );
+              }
+
+              if (isMobile) {
+                return (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {filteredPayments.map((p) => (
+                      <MobileRepaymentCard key={p.id} payment={p} />
+                    ))}
+                  </Box>
+                );
+              }
+
+              return (
+                <Box sx={{ overflowX: 'auto', width: '100%' }}>
+                  <Table size="small" sx={{ minWidth: 450 }}>
+                    <TableHead>
+                      <TableRow sx={{ backgroundColor: 'background.default' }}>
+                        <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Payment Date</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Type</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Amount</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Remarks</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {filteredPayments.map((p) => (
+                        <TableRow key={p.id}>
+                          <TableCell sx={{ py: 1.5 }}>{p.paymentDate}</TableCell>
+                          <TableCell sx={{ py: 1.5 }}>
+                            <Chip 
+                              label={p.paymentType} 
+                              size="small" 
+                              color={p.paymentType === 'PRINCIPAL' ? 'primary' : 'success'} 
+                              sx={{ fontWeight: 'bold', fontSize: '0.65rem', height: 20 }}
+                            />
+                          </TableCell>
+                          <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>
+                            ₹{p.amount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell sx={{ color: 'text.secondary', py: 1.5 }}>{p.remarks || '-'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Box>
+              );
+            })()}
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>

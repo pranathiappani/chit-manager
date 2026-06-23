@@ -1,16 +1,24 @@
 package com.chitmanager.backend.models;
 
 import jakarta.persistence.*;
-
+import lombok.*;
 import java.math.BigDecimal;
 
 @Entity
 @Table(name = "profit_ledger")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class ProfitLedger {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "tenant_id")
+    private String tenantId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "chit_group_id")

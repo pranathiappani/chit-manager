@@ -66,30 +66,36 @@ const getDesignTokens = (mode) => ({
     },
   },
   shape: {
-    borderRadius: 16,
+    borderRadius: 4,
   },
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: '12px',
-          padding: '10px 20px',
+          borderRadius: '6px',
+          padding: '10px 24px',
           boxShadow: 'none',
-          transition: 'all 0.3s ease-in-out',
+          fontWeight: 700,
+          transition: 'all 0.2s ease-in-out',
           '&:hover': {
-            transform: 'translateY(-2px)',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            transform: 'translateY(-1px)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
           },
         },
         containedPrimary: {
-          background: mode === 'light' 
-            ? 'linear-gradient(135deg, #4338ca 0%, #6366f1 100%)'
-            : 'linear-gradient(135deg, #6366f1 0%, #818cf8 100%)',
-          color: '#ffffff',
+          backgroundColor: mode === 'light' ? '#000000' : '#ffffff',
+          color: mode === 'light' ? '#ffffff' : '#000000',
           '&:hover': {
-            boxShadow: mode === 'light' 
-              ? '0 6px 16px rgba(67, 56, 202, 0.3)'
-              : '0 6px 16px rgba(99, 102, 241, 0.3)',
+            backgroundColor: mode === 'light' ? '#222222' : '#f1f5f9',
+            boxShadow: '0 6px 16px rgba(0, 0, 0, 0.1)',
+          }
+        },
+        outlinedPrimary: {
+          borderColor: mode === 'light' ? '#000000' : '#ffffff',
+          color: mode === 'light' ? '#000000' : '#ffffff',
+          '&:hover': {
+            borderColor: mode === 'light' ? '#222222' : '#f1f5f9',
+            backgroundColor: mode === 'light' ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.05)',
           }
         }
       },
@@ -97,17 +103,18 @@ const getDesignTokens = (mode) => ({
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: '16px',
+          borderRadius: '8px',
+          border: mode === 'light' ? '1px solid #f1f5f9' : '1px solid #1e293b',
           boxShadow: mode === 'light'
-            ? '0 4px 20px -2px rgba(0, 0, 0, 0.05)'
-            : '0 4px 20px -2px rgba(0, 0, 0, 0.3)',
+            ? '0 6px 20px rgba(0, 0, 0, 0.02)'
+            : '0 6px 20px rgba(0, 0, 0, 0.15)',
           transition: 'all 0.3s ease-in-out',
           backgroundImage: 'none',
           '&:hover': {
-            transform: 'translateY(-4px)',
+            transform: 'translateY(-2px)',
             boxShadow: mode === 'light'
-              ? '0 12px 24px -4px rgba(0, 0, 0, 0.1)'
-              : '0 12px 24px -4px rgba(0, 0, 0, 0.4)',
+              ? '0 12px 24px rgba(0, 0, 0, 0.04)'
+              : '0 12px 24px rgba(0, 0, 0, 0.2)',
           },
         },
       },
@@ -116,10 +123,10 @@ const getDesignTokens = (mode) => ({
       styleOverrides: {
         root: {
           '& .MuiOutlinedInput-root': {
-            borderRadius: '12px',
+            borderRadius: '6px',
             transition: 'all 0.2s ease-in-out',
             '&:hover .MuiOutlinedInput-notchedOutline': {
-              borderColor: mode === 'light' ? '#6366f1' : '#818cf8',
+              borderColor: mode === 'light' ? '#000000' : '#ffffff',
             },
           },
         },

@@ -1,7 +1,7 @@
 package com.chitmanager.backend.security;
 
-import com.chitmanager.backend.models.User;
-import com.chitmanager.backend.repositories.UserRepository;
+import com.chitmanager.backend.models.Tenant;
+import com.chitmanager.backend.repositories.TenantRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -13,14 +13,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Autowired
-    UserRepository userRepository;
+    TenantRepository tenantRepository;
 
     @Override
     @Transactional
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User Not Found with username: " + username));
+        Tenant tenant = tenantRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Tenant Not Found with username: " + username));
 
-        return UserDetailsImpl.build(user);
+        return UserDetailsImpl.build(tenant);
     }
 }

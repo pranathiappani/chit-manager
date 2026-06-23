@@ -9,6 +9,7 @@ import com.chitmanager.backend.repositories.ChitGroupRepository;
 import com.chitmanager.backend.repositories.CollectionRepository;
 import com.chitmanager.backend.repositories.MemberRepository;
 import com.chitmanager.backend.repositories.ChitMemberRepository;
+import com.chitmanager.backend.security.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,24 +34,26 @@ public class CollectionService {
 
     @Transactional
     public CollectionDTO recordCollection(CollectionDTO dto) {
-        ChitGroup chitGroup = chitGroupRepository.findById(dto.getChitGroupId())
+        String tenantId = SecurityUtils.getTenantId();
+        ChitGroup chitGroup = chitGroupRepository.findByTenantIdAndId(tenantId, dto.getChitGroupId())
                 .orElseThrow(() -> new RuntimeException("Chit group not found"));
 
-        Member member = memberRepository.findById(dto.getMemberId())
+        Member member = memberRepository.findByTenantIdAndId(tenantId, dto.getMemberId())
                 .orElseThrow(() -> new RuntimeException("Member not found"));
 
         Collection collection = new Collection();
         if (dto.getId() != null) {
-            collection = collectionRepository.findById(dto.getId())
+            collection = collectionRepository.findByTenantIdAndId(tenantId, dto.getId())
                     .orElseThrow(() -> new RuntimeException("Collection record not found"));
         } else {
+            collection.setTenantId(tenantId);
             collection.setChitGroup(chitGroup);
             collection.setMember(member);
             collection.setForMonth(dto.getForMonth());
         }
 
         if (dto.getChitMemberId() != null) {
-            ChitMember chitMember = chitMemberRepository.findById(dto.getChitMemberId())
+            ChitMember chitMember = chitMemberRepository.findByTenantIdAndId(tenantId, dto.getChitMemberId())
                     .orElseThrow(() -> new RuntimeException("Chit member slot not found"));
             collection.setChitMember(chitMember);
         }
@@ -64,26 +67,29 @@ public class CollectionService {
     }
 
     public List<CollectionDTO> getCollectionsForChitAndMonth(Long chitGroupId, Integer forMonth) {
-        return collectionRepository.findByChitGroupIdAndForMonth(chitGroupId, forMonth)
+        String tenantId = SecurityUtils.getTenantId();
+        return collectionRepository.findByTenantIdAndChitGroupIdAndForMonth(tenantId, chitGroupId, forMonth)
                 .stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
     public List<CollectionDTO> getCollectionsForChit(Long chitGroupId) {
-        return collectionRepository.findByChitGroupId(chitGroupId)
+        String tenantId = SecurityUtils.getTenantId();
+        return collectionRepository.findByTenantIdAndChitGroupId(tenantId, chitGroupId)
                 .stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
     public List<CollectionDTO> getCollectionsForMember(Long memberId) {
-        return collectionRepository.findByMemberId(memberId)
+        String tenantId = SecurityUtils.getTenantId();
+        return collectionRepository.findByTenantIdAndMemberId(tenantId, memberId)
                 .stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
     @Transactional
     public void deleteCollection(Long id) {
-        if (!collectionRepository.existsById(id)) {
-            throw new RuntimeException("Collection record not found");
-        }
-        collectionRepository.deleteById(id);
+        String tenantId = SecurityUtils.getTenantId();
+        Collection collection = collectionRepository.findByTenantIdAndId(tenantId, id)
+                .orElseThrow(() -> new RuntimeException("Collection record not found"));
+        collectionRepository.delete(collection);
     }
 
     private CollectionDTO mapToDTO(Collection collection) {

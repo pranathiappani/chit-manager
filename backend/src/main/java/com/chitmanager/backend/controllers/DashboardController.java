@@ -7,6 +7,7 @@ import com.chitmanager.backend.repositories.ActualPayoutRepository;
 import com.chitmanager.backend.repositories.ChitGroupRepository;
 import com.chitmanager.backend.repositories.CollectionRepository;
 import com.chitmanager.backend.repositories.MemberRepository;
+import com.chitmanager.backend.security.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -44,17 +45,21 @@ public class DashboardController {
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> getDashboardStats() {
         Map<String, Object> stats = new HashMap<>();
+        String tenantId = SecurityUtils.getTenantId();
+        
+        // Fetch all groups belonging to the tenant once to minimize DB calls
+        List<ChitGroup> allTenantGroups = chitGroupRepository.findAllByTenantId(tenantId);
         
         // 1. Total Active Chits
-        long totalActiveChits = chitGroupRepository.findAll().stream()
+        long totalActiveChits = allTenantGroups.stream()
                 .filter(cg -> ChitGroupStatus.ACTIVE.equals(cg.getStatus()))
                 .count();
 
         // 2. Total Members
-        long totalMembers = memberRepository.count();
+        long totalMembers = memberRepository.countByTenantId(tenantId);
         
         // 3. Profits of Completed Chits
-        BigDecimal completedChitsProfit = chitGroupRepository.findAll().stream()
+        BigDecimal completedChitsProfit = allTenantGroups.stream()
                 .filter(cg -> ChitGroupStatus.COMPLETED.equals(cg.getStatus()))
                 .map(cg -> cg.getActualProfit() != null ? cg.getActualProfit() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -63,20 +68,20 @@ public class DashboardController {
         List<Map<String, Object>> activeChitsCollectionDetails = new ArrayList<>();
         long totalPendingCollectionsCount = 0;
 
-        List<ChitGroup> activeChits = chitGroupRepository.findAll().stream()
+        List<ChitGroup> activeChits = allTenantGroups.stream()
                 .filter(cg -> ChitGroupStatus.ACTIVE.equals(cg.getStatus()))
                 .collect(Collectors.toList());
 
         for (ChitGroup group : activeChits) {
             // Find current active month from payouts
-            List<com.chitmanager.backend.models.ActualPayout> payouts = actualPayoutRepository.findByChitGroupIdOrderByPayoutDateAsc(group.getId());
+            List<com.chitmanager.backend.models.ActualPayout> payouts = actualPayoutRepository.findByTenantIdAndChitGroupIdOrderByPayoutDateAsc(tenantId, group.getId());
             int currentMonth = payouts.stream()
                     .mapToInt(com.chitmanager.backend.models.ActualPayout::getPayoutMonth)
                     .max()
                     .orElse(1);
 
             // Fetch collections for this group
-            List<com.chitmanager.backend.models.Collection> collections = collectionRepository.findByChitGroupId(group.getId());
+            List<com.chitmanager.backend.models.Collection> collections = collectionRepository.findByTenantIdAndChitGroupId(tenantId, group.getId());
             
             // Count paid collections for this current month
             long paidMembersCount = collections.stream()

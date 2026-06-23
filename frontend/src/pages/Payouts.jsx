@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Card, CardContent, Typography, Grid, Table, TableBody, TableCell, TableHead, TableRow, MenuItem, Select, FormControl, InputLabel, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Chip, CircularProgress } from '@mui/material';
+import { Box, Card, CardContent, Typography, Grid, Table, TableBody, TableCell, TableHead, TableRow, MenuItem, Select, FormControl, InputLabel, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Chip, CircularProgress, IconButton } from '@mui/material';
 import { useForm, useWatch, Controller } from 'react-hook-form';
 import api from '../api/axiosConfig';
-import { Wallet, CheckCircle, Clock, TrendingUp } from 'lucide-react';
+import { Wallet, CheckCircle, Clock, TrendingUp, X } from 'lucide-react';
 import { formatMonth } from '../utils/dateUtils';
 
 const StatCard = ({ title, value, icon, color }) => (
@@ -385,96 +385,128 @@ const Payouts = () => {
 
       {/* Record Payout Modal */}
       <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth disableEnforceFocus>
-        <DialogTitle>Record New Payout</DialogTitle>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 'bold' }}>
+          <span>Record New Payout</span>
+          <IconButton onClick={handleClose} color="inherit" size="small">
+            <X size={20} />
+          </IconButton>
+        </DialogTitle>
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogContent dividers>
             <Grid container spacing={2}>
               <Grid item xs={12}>
-                <FormControl fullWidth error={!!errors.chitMemberId}>
-                  <InputLabel id="payout-member-label">Select Member Spot</InputLabel>
-                  <Controller
-                    name="chitMemberId"
-                    control={control}
-                    rules={{ required: 'Member spot is required' }}
-                    defaultValue=""
-                    render={({ field }) => (
-                      <Select
-                        {...field}
-                        labelId="payout-member-label"
-                        label="Select Member Spot"
-                      >
-                        <MenuItem value="" disabled>-- Select a Member Spot --</MenuItem>
-                        {members.length === 0 ? (
-                          <MenuItem disabled value="">No members found in this chit group. Please assign members first.</MenuItem>
-                        ) : (
-                          members.map(m => (
-                            <MenuItem key={m.chitMemberId || m.id} value={m.chitMemberId || m.id}>
-                              {m.name} {m.slotIndex ? `(Spot #${m.slotIndex})` : ''}
+                <Box sx={{ width: '100%' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                    Select Member Spot *
+                  </Typography>
+                  <FormControl fullWidth sx={{ width: '100%' }} size="small" error={!!errors.chitMemberId}>
+                    <Controller
+                      name="chitMemberId"
+                      control={control}
+                      rules={{ required: 'Member spot is required' }}
+                      defaultValue=""
+                      render={({ field }) => (
+                        <Select
+                          {...field}
+                          sx={{ width: '100%' }}
+                          displayEmpty
+                        >
+                          <MenuItem value="" disabled>-- Select a Member Spot --</MenuItem>
+                          {members.length === 0 ? (
+                            <MenuItem disabled value="">No members found in this chit group. Please assign members first.</MenuItem>
+                          ) : (
+                            members.map(m => (
+                              <MenuItem key={m.chitMemberId || m.id} value={m.chitMemberId || m.id}>
+                                {m.name} {m.slotIndex ? `(Spot #${m.slotIndex})` : ''}
+                              </MenuItem>
+                            ))
+                          )}
+                        </Select>
+                      )}
+                    />
+                  </FormControl>
+                </Box>
+              </Grid>
+              <Grid item xs={12}>
+                <Box sx={{ width: '100%' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                    For Month Number *
+                  </Typography>
+                  <FormControl fullWidth sx={{ width: '100%' }} size="small" error={!!errors.payoutMonth}>
+                    <Controller
+                      name="payoutMonth"
+                      control={control}
+                      rules={{ required: 'Month is required' }}
+                      defaultValue=""
+                      render={({ field }) => (
+                        <Select
+                          {...field}
+                          sx={{ width: '100%' }}
+                          displayEmpty
+                        >
+                          <MenuItem value="" disabled>-- Select a Month --</MenuItem>
+                          {Array.from({ length: selectedChitData?.durationMonths || 0 }, (_, i) => i + 1).map(m => (
+                            <MenuItem key={m} value={m}>
+                              Month {m} ({formatMonth(selectedChitData?.startMonth, m)})
                             </MenuItem>
-                          ))
-                        )}
-                      </Select>
-                    )}
-                  />
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth error={!!errors.payoutMonth}>
-                  <InputLabel id="payout-month-label">For Month Number</InputLabel>
-                  <Controller
-                    name="payoutMonth"
-                    control={control}
-                    rules={{ required: 'Month is required' }}
-                    defaultValue=""
-                    render={({ field }) => (
-                      <Select
-                        {...field}
-                        labelId="payout-month-label"
-                        label="For Month Number"
-                      >
-                        <MenuItem value="" disabled>-- Select a Month --</MenuItem>
-                        {Array.from({ length: selectedChitData?.durationMonths || 0 }, (_, i) => i + 1).map(m => (
-                          <MenuItem key={m} value={m}>
-                            Month {m} ({formatMonth(selectedChitData?.startMonth, m)})
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    )}
-                  />
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  type="date"
-                  label="Payout Date"
-                  InputLabelProps={{ shrink: true }}
-                  {...register('payoutDate', { required: 'Date is required' })}
-                  inputRef={register('payoutDate').ref}
-                  error={!!errors.payoutDate}
-                  helperText={errors.payoutDate?.message}
-                />
+                          ))}
+                        </Select>
+                      )}
+                    />
+                  </FormControl>
+                </Box>
               </Grid>
               <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="Actual Payout Amount (₹)"
-                  helperText={errors.payoutAmount?.message || "Payout amount given to the winner for this month"}
-                  {...register('payoutAmount', { required: 'Amount is required', min: 1 })}
-                  inputRef={register('payoutAmount').ref}
-                  error={!!errors.payoutAmount}
-                />
+                <Box sx={{ width: '100%' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                    Payout Date *
+                  </Typography>
+                  <TextField
+                    sx={{ width: '100%' }}
+                    fullWidth
+                    type="date"
+                    {...register('payoutDate', { required: 'Date is required' })}
+                    inputRef={register('payoutDate').ref}
+                    error={!!errors.payoutDate}
+                    helperText={errors.payoutDate?.message}
+                    size="small"
+                  />
+                </Box>
               </Grid>
               <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Remarks (Optional)"
-                  multiline
-                  rows={2}
-                  {...register('remarks')}
-                  inputRef={register('remarks').ref}
-                />
+                <Box sx={{ width: '100%' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                    Actual Payout Amount (₹) *
+                  </Typography>
+                  <TextField
+                    sx={{ width: '100%' }}
+                    fullWidth
+                    type="number"
+                    placeholder="e.g. 95000"
+                    helperText={errors.payoutAmount?.message || "Payout amount given to the winner for this month"}
+                    {...register('payoutAmount', { required: 'Amount is required', min: 1 })}
+                    inputRef={register('payoutAmount').ref}
+                    error={!!errors.payoutAmount}
+                    size="small"
+                  />
+                </Box>
+              </Grid>
+              <Grid item xs={12}>
+                <Box sx={{ width: '100%' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                    Remarks (Optional)
+                  </Typography>
+                  <TextField
+                    sx={{ width: '100%' }}
+                    fullWidth
+                    placeholder="Enter payment notes..."
+                    multiline
+                    rows={2}
+                    {...register('remarks')}
+                    inputRef={register('remarks').ref}
+                    size="small"
+                  />
+                </Box>
               </Grid>
             </Grid>
           </DialogContent>

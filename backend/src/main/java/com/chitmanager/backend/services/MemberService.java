@@ -7,6 +7,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.chitmanager.backend.security.SecurityUtils;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -32,16 +34,20 @@ public class MemberService {
     private MemberRepository memberRepository;
 
     public List<MemberDTO> getAllMembers() {
-        return memberRepository.findAll().stream().map(this::mapToDTO).collect(Collectors.toList());
+        String tenantId = SecurityUtils.getTenantId();
+        return memberRepository.findAllByTenantId(tenantId).stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
     public MemberDTO getMemberById(Long id) {
-        Member member = memberRepository.findById(id).orElseThrow(() -> new RuntimeException("Member not found"));
+        String tenantId = SecurityUtils.getTenantId();
+        Member member = memberRepository.findByTenantIdAndId(tenantId, id).orElseThrow(() -> new RuntimeException("Member not found"));
         return mapToDTO(member);
     }
 
     public MemberDTO createMember(MemberDTO dto) {
+        String tenantId = SecurityUtils.getTenantId();
         Member member = new Member();
+        member.setTenantId(tenantId);
         member.setName(dto.getName());
         member.setPhone(dto.getPhone());
         member.setAddress(dto.getAddress());
@@ -53,7 +59,8 @@ public class MemberService {
     }
 
     public MemberDTO updateMember(Long id, MemberDTO dto) {
-        Member member = memberRepository.findById(id).orElseThrow(() -> new RuntimeException("Member not found"));
+        String tenantId = SecurityUtils.getTenantId();
+        Member member = memberRepository.findByTenantIdAndId(tenantId, id).orElseThrow(() -> new RuntimeException("Member not found"));
         member.setName(dto.getName());
         member.setPhone(dto.getPhone());
         member.setAddress(dto.getAddress());
@@ -65,31 +72,35 @@ public class MemberService {
 
     @Transactional
     public void deleteMember(Long id) {
+        String tenantId = SecurityUtils.getTenantId();
+        Member member = memberRepository.findByTenantIdAndId(tenantId, id).orElseThrow(() -> new RuntimeException("Member not found"));
+
         // 1. Delete all loan payments for this member's loans
-        loanRepository.findByMemberId(id).forEach(loan -> {
-            loanPaymentRepository.deleteAll(loanPaymentRepository.findByLoanId(loan.getId()));
+        loanRepository.findByTenantIdAndMemberId(tenantId, id).forEach(loan -> {
+            loanPaymentRepository.deleteAll(loanPaymentRepository.findByTenantIdAndLoanId(tenantId, loan.getId()));
         });
         
         // 2. Delete all loans for this member
-        loanRepository.deleteAll(loanRepository.findByMemberId(id));
+        loanRepository.deleteAll(loanRepository.findByTenantIdAndMemberId(tenantId, id));
         
         // 3. Delete all collections for this member
-        collectionRepository.deleteAll(collectionRepository.findByMemberId(id));
+        collectionRepository.deleteAll(collectionRepository.findByTenantIdAndMemberId(tenantId, id));
         
         // 4. Delete all actual payouts for this member
-        actualPayoutRepository.deleteAll(actualPayoutRepository.findByMemberId(id));
+        actualPayoutRepository.deleteAll(actualPayoutRepository.findByTenantIdAndMemberId(tenantId, id));
         
         // 5. Delete all memberships for this member
-        chitMemberRepository.deleteAll(chitMemberRepository.findByMemberId(id));
+        chitMemberRepository.deleteAll(chitMemberRepository.findByTenantIdAndMemberId(tenantId, id));
         
         // 6. Delete the member record itself
-        memberRepository.deleteById(id);
+        memberRepository.delete(member);
     }
 
     public com.chitmanager.backend.dto.MemberDetailsDTO getMemberDetails(Long id) {
-        Member member = memberRepository.findById(id).orElseThrow(() -> new RuntimeException("Member not found"));
+        String tenantId = SecurityUtils.getTenantId();
+        Member member = memberRepository.findByTenantIdAndId(tenantId, id).orElseThrow(() -> new RuntimeException("Member not found"));
         
-        List<com.chitmanager.backend.dto.ChitGroupDTO> chits = chitMemberRepository.findByMemberId(id).stream()
+        List<com.chitmanager.backend.dto.ChitGroupDTO> chits = chitMemberRepository.findByTenantIdAndMemberId(tenantId, id).stream()
                 .map(cm -> {
                     com.chitmanager.backend.models.ChitGroup cg = cm.getChitGroup();
                     com.chitmanager.backend.dto.ChitGroupDTO dto = new com.chitmanager.backend.dto.ChitGroupDTO();
@@ -113,7 +124,7 @@ public class MemberService {
                     return dto;
                 }).collect(Collectors.toList());
 
-        List<com.chitmanager.backend.dto.LoanDTO> loans = loanRepository.findByMemberId(id).stream()
+        List<com.chitmanager.backend.dto.LoanDTO> loans = loanRepository.findByTenantIdAndMemberId(tenantId, id).stream()
                 .map(loan -> {
                     com.chitmanager.backend.dto.LoanDTO dto = new com.chitmanager.backend.dto.LoanDTO();
                     dto.setId(loan.getId());
@@ -130,7 +141,7 @@ public class MemberService {
                     dto.setInterestType(loan.getInterestType() != null ? loan.getInterestType() : "ACCUMULATED");
 
                     if (loan.getId() != null) {
-                        java.math.BigDecimal collected = loanPaymentRepository.findByLoanId(loan.getId()).stream()
+                        java.math.BigDecimal collected = loanPaymentRepository.findByTenantIdAndLoanId(tenantId, loan.getId()).stream()
                                 .filter(p -> "INTEREST".equals(p.getPaymentType()))
                                 .map(com.chitmanager.backend.models.LoanPayment::getAmount)
                                 .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);

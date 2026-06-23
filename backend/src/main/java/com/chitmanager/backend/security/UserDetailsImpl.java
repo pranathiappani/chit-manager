@@ -1,6 +1,6 @@
 package com.chitmanager.backend.security;
 
-import com.chitmanager.backend.models.User;
+import com.chitmanager.backend.models.Tenant;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -20,25 +20,29 @@ public class UserDetailsImpl implements UserDetails {
     @JsonIgnore
     private String password;
 
+    private String tenantId;
+
     private Collection<? extends GrantedAuthority> authorities;
 
-    public UserDetailsImpl(Long id, String username, String password,
+    public UserDetailsImpl(Long id, String username, String password, String tenantId,
                            Collection<? extends GrantedAuthority> authorities) {
         this.id = id;
         this.username = username;
         this.password = password;
+        this.tenantId = tenantId;
         this.authorities = authorities;
     }
 
-    public static UserDetailsImpl build(User user) {
+    public static UserDetailsImpl build(Tenant tenant) {
         List<GrantedAuthority> authorities = Collections.singletonList(
-                new SimpleGrantedAuthority(user.getRole().name())
+                new SimpleGrantedAuthority(tenant.getRole().name())
         );
 
         return new UserDetailsImpl(
-                user.getId(),
-                user.getUsername(),
-                user.getPasswordHash(),
+                tenant.getId(),
+                tenant.getUsername(),
+                tenant.getPassword(),
+                tenant.getTenantId(),
                 authorities);
     }
 
@@ -49,6 +53,10 @@ public class UserDetailsImpl implements UserDetails {
 
     public Long getId() {
         return id;
+    }
+
+    public String getTenantId() {
+        return tenantId;
     }
 
     @Override

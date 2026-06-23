@@ -13,6 +13,7 @@ import com.chitmanager.backend.repositories.ChitGroupRepository;
 import com.chitmanager.backend.repositories.MemberRepository;
 import com.chitmanager.backend.repositories.PayoutPlanRepository;
 import com.chitmanager.backend.repositories.ChitMemberRepository;
+import com.chitmanager.backend.security.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,13 +45,15 @@ public class PayoutService {
 
     @Transactional
     public PayoutDTO recordPayout(PayoutDTO dto) {
-        ChitGroup chitGroup = chitGroupRepository.findById(dto.getChitGroupId())
+        String tenantId = SecurityUtils.getTenantId();
+        ChitGroup chitGroup = chitGroupRepository.findByTenantIdAndId(tenantId, dto.getChitGroupId())
                 .orElseThrow(() -> new RuntimeException("Chit group not found"));
         
-        Member member = memberRepository.findById(dto.getMemberId())
+        Member member = memberRepository.findByTenantIdAndId(tenantId, dto.getMemberId())
                 .orElseThrow(() -> new RuntimeException("Member not found"));
 
         ActualPayout payout = new ActualPayout();
+        payout.setTenantId(tenantId);
         payout.setChitGroup(chitGroup);
         payout.setMember(member);
         payout.setPayoutMonth(dto.getPayoutMonth());
@@ -60,13 +63,13 @@ public class PayoutService {
         payout.setRemarks(dto.getRemarks());
 
         if (dto.getChitMemberId() != null) {
-            ChitMember chitMember = chitMemberRepository.findById(dto.getChitMemberId())
+            ChitMember chitMember = chitMemberRepository.findByTenantIdAndId(tenantId, dto.getChitMemberId())
                     .orElseThrow(() -> new RuntimeException("Chit member slot not found"));
             payout.setChitMember(chitMember);
         }
         
-        List<PayoutPlan> plans = payoutPlanRepository.findByChitGroupIdOrderByMonthNumberAsc(dto.getChitGroupId());
-        List<ActualPayout> existingPayouts = actualPayoutRepository.findByChitGroupIdOrderByPayoutMonthAscPayoutSequenceSlotAsc(dto.getChitGroupId());
+        List<PayoutPlan> plans = payoutPlanRepository.findByTenantIdAndChitGroupIdOrderByMonthNumberAsc(tenantId, dto.getChitGroupId());
+        List<ActualPayout> existingPayouts = actualPayoutRepository.findByTenantIdAndChitGroupIdOrderByPayoutMonthAscPayoutSequenceSlotAsc(tenantId, dto.getChitGroupId());
         
         ChitProfitStrategy strategy = profitCalculationService.getStrategy(chitGroup.getStrategyType());
         payout = strategy.calculatePayoutAdjustments(chitGroup, payout, plans, existingPayouts);
@@ -76,10 +79,11 @@ public class PayoutService {
 
     @Transactional
     public void completeChit(Long chitGroupId) {
-        ChitGroup chitGroup = chitGroupRepository.findById(chitGroupId)
+        String tenantId = SecurityUtils.getTenantId();
+        ChitGroup chitGroup = chitGroupRepository.findByTenantIdAndId(tenantId, chitGroupId)
                 .orElseThrow(() -> new RuntimeException("Chit group not found"));
                 
-        List<ActualPayout> payouts = actualPayoutRepository.findByChitGroupIdOrderByPayoutMonthAscPayoutSequenceSlotAsc(chitGroupId);
+        List<ActualPayout> payouts = actualPayoutRepository.findByTenantIdAndChitGroupIdOrderByPayoutMonthAscPayoutSequenceSlotAsc(tenantId, chitGroupId);
         ChitProfitStrategy strategy = profitCalculationService.getStrategy(chitGroup.getStrategyType());
         
         BigDecimal actualProfit = strategy.calculateFinalActualProfit(chitGroup, payouts);
@@ -92,7 +96,8 @@ public class PayoutService {
     }
 
     public List<PayoutDTO> getPayoutsForChit(Long chitGroupId) {
-        return actualPayoutRepository.findByChitGroupIdOrderByPayoutMonthAscPayoutSequenceSlotAsc(chitGroupId)
+        String tenantId = SecurityUtils.getTenantId();
+        return actualPayoutRepository.findByTenantIdAndChitGroupIdOrderByPayoutMonthAscPayoutSequenceSlotAsc(tenantId, chitGroupId)
                 .stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
@@ -101,11 +106,12 @@ public class PayoutService {
      * Evaluates total expected payouts vs actual payouts, decoupling from rigid monthly assumptions.
      */
     public PayoutSummaryDTO getPayoutSummary(Long chitGroupId) {
-        ChitGroup chitGroup = chitGroupRepository.findById(chitGroupId)
+        String tenantId = SecurityUtils.getTenantId();
+        ChitGroup chitGroup = chitGroupRepository.findByTenantIdAndId(tenantId, chitGroupId)
                 .orElseThrow(() -> new RuntimeException("Chit group not found"));
 
-        List<PayoutPlan> plans = payoutPlanRepository.findByChitGroupIdOrderByMonthNumberAsc(chitGroupId);
-        List<ActualPayout> actualPayouts = actualPayoutRepository.findByChitGroupIdOrderByPayoutMonthAscPayoutSequenceSlotAsc(chitGroupId);
+        List<PayoutPlan> plans = payoutPlanRepository.findByTenantIdAndChitGroupIdOrderByMonthNumberAsc(tenantId, chitGroupId);
+        List<ActualPayout> actualPayouts = actualPayoutRepository.findByTenantIdAndChitGroupIdOrderByPayoutMonthAscPayoutSequenceSlotAsc(tenantId, chitGroupId);
 
         int totalExpected = plans.stream().mapToInt(PayoutPlan::getExpectedPayoutCount).sum();
         int completed = actualPayouts.size();
@@ -151,15 +157,17 @@ public class PayoutService {
 
     @Transactional
     public void setupExpectedPayoutPlan(Long chitGroupId, List<PayoutPlanDTO> planDtos) {
-        ChitGroup chitGroup = chitGroupRepository.findById(chitGroupId)
+        String tenantId = SecurityUtils.getTenantId();
+        ChitGroup chitGroup = chitGroupRepository.findByTenantIdAndId(tenantId, chitGroupId)
                 .orElseThrow(() -> new RuntimeException("Chit group not found"));
 
         // Delete existing and set new
-        List<PayoutPlan> existingPlans = payoutPlanRepository.findByChitGroupIdOrderByMonthNumberAsc(chitGroupId);
+        List<PayoutPlan> existingPlans = payoutPlanRepository.findByTenantIdAndChitGroupIdOrderByMonthNumberAsc(tenantId, chitGroupId);
         payoutPlanRepository.deleteAll(existingPlans);
 
         List<PayoutPlan> newPlans = planDtos.stream().map(dto -> {
             PayoutPlan plan = new PayoutPlan();
+            plan.setTenantId(tenantId);
             plan.setChitGroup(chitGroup);
             plan.setMonthNumber(dto.getMonthNumber());
             plan.setPayoutAmount(dto.getPayoutAmount());
@@ -171,7 +179,8 @@ public class PayoutService {
     }
 
     public List<PayoutPlanDTO> getPayoutPlansForChit(Long chitGroupId) {
-        return payoutPlanRepository.findByChitGroupIdOrderByMonthNumberAsc(chitGroupId)
+        String tenantId = SecurityUtils.getTenantId();
+        return payoutPlanRepository.findByTenantIdAndChitGroupIdOrderByMonthNumberAsc(tenantId, chitGroupId)
                 .stream().map(plan -> {
                     PayoutPlanDTO dto = new PayoutPlanDTO();
                     dto.setMonthNumber(plan.getMonthNumber());
@@ -183,7 +192,10 @@ public class PayoutService {
 
     @Transactional
     public void deletePayout(Long id) {
-        actualPayoutRepository.deleteById(id);
+        String tenantId = SecurityUtils.getTenantId();
+        ActualPayout payout = actualPayoutRepository.findByTenantIdAndId(tenantId, id)
+                .orElseThrow(() -> new RuntimeException("Payout record not found"));
+        actualPayoutRepository.delete(payout);
     }
 
     private PayoutDTO mapToDTO(ActualPayout payout) {

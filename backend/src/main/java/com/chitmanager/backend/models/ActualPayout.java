@@ -22,6 +22,9 @@ public class ActualPayout {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "tenant_id")
+    private String tenantId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "chit_group_id", nullable = false)
     private ChitGroup chitGroup;

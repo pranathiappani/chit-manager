@@ -21,6 +21,9 @@ public class ChitGroup {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "tenant_id")
+    private String tenantId;
+
     @Column(nullable = false)
     private String name;
 
