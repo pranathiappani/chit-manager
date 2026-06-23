@@ -188,7 +188,7 @@ const Login = ({ initialFlow }) => {
           <Button
             fullWidth
             variant="contained"
-            onClick={handleSwitchToSignIn}
+            onClick={handleSwitchToSignUp}
             sx={{
               backgroundColor: isLight ? '#000000' : '#ffffff',
               color: isLight ? '#ffffff' : '#000000',
@@ -199,6 +199,7 @@ const Login = ({ initialFlow }) => {
               textTransform: 'uppercase',
               boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
               transition: 'all 0.3s ease',
+              mb: 2.5,
               '&:hover': {
                 backgroundColor: isLight ? '#222222' : '#f1f5f9',
                 transform: 'translateY(-2px)'
@@ -207,6 +208,21 @@ const Login = ({ initialFlow }) => {
           >
             Join Now
           </Button>
+          <Box sx={{ textAlign: 'center' }}>
+            <Button
+              variant="text"
+              onClick={handleSwitchToSignIn}
+              sx={{ 
+                textTransform: 'none', 
+                color: 'text.secondary', 
+                fontWeight: 600, 
+                fontSize: '0.9rem',
+                '&:hover': { color: theme.palette.text.primary }
+              }}
+            >
+              Already have an account? Log In
+            </Button>
+          </Box>
         </Box>
       )}
 
