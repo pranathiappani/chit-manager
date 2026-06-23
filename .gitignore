@@ -2,10 +2,10 @@
 /backend/target/
 
 # Private environment configurations
-*.env
 .env
-backend/.env
-frontend/.env
+.env.*
+*.env
+*.env.*
 
 # Local IDE and System files
 .idea/

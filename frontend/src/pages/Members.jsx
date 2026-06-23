@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Card, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Grid, Chip, Divider, CircularProgress, Collapse } from '@mui/material';
+import { Box, Card, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Grid, Chip, Divider, CircularProgress, Collapse, InputAdornment } from '@mui/material';
 import { useForm } from 'react-hook-form';
-import { Plus, Edit2, Trash2, Eye, Landmark, Wallet, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Edit2, Trash2, Eye, Landmark, Wallet, ChevronDown, ChevronUp, Search } from 'lucide-react';
 import api from '../api/axiosConfig';
 
 const MobileMemberRow = ({ member, handleViewDetails, handleEditClick, handleDeleteMember }) => {
@@ -93,7 +93,12 @@ const Members = () => {
   const [selectedMemberDetails, setSelectedMemberDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
+
+  const filteredMembers = members.filter(member =>
+    member.name && member.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const fetchMembers = async () => {
     try {
@@ -200,6 +205,25 @@ const Members = () => {
         </Button>
       </Box>
 
+      {/* Search Bar */}
+      <Box sx={{ mb: 3 }}>
+        <TextField
+          fullWidth
+          variant="outlined"
+          placeholder="Search members by name..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search size={20} color="#888" />
+              </InputAdornment>
+            ),
+          }}
+          size="small"
+        />
+      </Box>
+
       {/* Desktop Table View */}
       <Box sx={{ display: { xs: 'none', md: 'block' } }}>
         <Card>
@@ -227,8 +251,14 @@ const Members = () => {
                       No members found. Add your first member!
                     </TableCell>
                   </TableRow>
+                ) : filteredMembers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                      No members match your search query.
+                    </TableCell>
+                  </TableRow>
                 ) : (
-                  members.map((member) => (
+                  filteredMembers.map((member) => (
                     <TableRow key={member.id}>
                       <TableCell>{member.name}</TableCell>
                       <TableCell>{member.phone}</TableCell>
@@ -258,9 +288,13 @@ const Members = () => {
           <Card sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
             No members found. Add your first member!
           </Card>
+        ) : filteredMembers.length === 0 ? (
+          <Card sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
+            No members match your search query.
+          </Card>
         ) : (
           <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-            {members.map((member) => (
+            {filteredMembers.map((member) => (
               <MobileMemberRow
                 key={member.id}
                 member={member}
