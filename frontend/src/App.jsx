@@ -15,6 +15,8 @@ import Layout from './components/Layout';
 import { useAuthStore, useThemeStore } from './store';
 import { ToastProvider } from './components/ToastProvider';
 
+import { ConfirmProvider, useConfirm } from './components/ConfirmProvider';
+
 const parseJwt = (token) => {
   try {
     const parts = token.split('.');
@@ -57,11 +59,10 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-function App() {
-  const mode = useThemeStore((state) => state.mode);
-  const theme = useMemo(() => getTheme(mode), [mode]);
+const SessionManager = ({ children }) => {
   const token = useAuthStore((state) => state.token);
   const logout = useAuthStore((state) => state.logout);
+  const { confirm } = useConfirm();
 
   useEffect(() => {
     if (!token) return;
@@ -74,9 +75,15 @@ function App() {
       if (timeLeft <= 0) {
         logout();
       } else {
-        const timer = setTimeout(() => {
+        const timer = setTimeout(async () => {
           logout();
-          alert("Your session has expired. Please log in again.");
+          await confirm({
+            title: 'Session Expired',
+            message: 'Your session has expired. Please log in again.',
+            confirmText: 'OK',
+            severity: 'error',
+            isAlert: true
+          });
         }, timeLeft);
 
         return () => clearTimeout(timer);
@@ -84,35 +91,46 @@ function App() {
     } else {
       logout();
     }
-  }, [token, logout]);
+  }, [token, logout, confirm]);
+
+  return children;
+};
+
+function App() {
+  const mode = useThemeStore((state) => state.mode);
+  const theme = useMemo(() => getTheme(mode), [mode]);
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <ToastProvider>
-        <Router>
-          <Routes>
-            <Route path="/login" element={<Login initialFlow="signin" />} />
-            <Route path="/signup" element={<Login initialFlow="signup" />} />
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <Layout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<Dashboard />} />
-              <Route path="members" element={<Members />} />
-              <Route path="chits" element={<Chits />} />
-              <Route path="chits/:id" element={<ChitDetails />} />
-              <Route path="collections" element={<Collections />} />
-              <Route path="payouts" element={<Payouts />} />
-              <Route path="loans" element={<Loans />} />
-              <Route path="settings" element={<Settings />} />
-            </Route>
-          </Routes>
-        </Router>
+        <ConfirmProvider>
+          <SessionManager>
+            <Router>
+              <Routes>
+                <Route path="/login" element={<Login initialFlow="signin" />} />
+                <Route path="/signup" element={<Login initialFlow="signup" />} />
+                <Route
+                  path="/"
+                  element={
+                    <ProtectedRoute>
+                      <Layout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route index element={<Dashboard />} />
+                  <Route path="members" element={<Members />} />
+                  <Route path="chits" element={<Chits />} />
+                  <Route path="chits/:id" element={<ChitDetails />} />
+                  <Route path="collections" element={<Collections />} />
+                  <Route path="payouts" element={<Payouts />} />
+                  <Route path="loans" element={<Loans />} />
+                  <Route path="settings" element={<Settings />} />
+                </Route>
+              </Routes>
+            </Router>
+          </SessionManager>
+        </ConfirmProvider>
       </ToastProvider>
     </ThemeProvider>
   );

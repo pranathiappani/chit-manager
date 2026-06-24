@@ -47,6 +47,10 @@ public class Collection {
     @Column(nullable = false)
     private CollectionStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_mode", nullable = true)
+    private PaymentMode paymentMode;
+
     private LocalDate paymentDate;
 
     @Convert(converter = CryptoConverter.class)

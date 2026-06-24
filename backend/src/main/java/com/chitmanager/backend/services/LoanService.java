@@ -5,6 +5,7 @@ import com.chitmanager.backend.dto.LoanPaymentDTO;
 import com.chitmanager.backend.models.Loan;
 import com.chitmanager.backend.models.LoanPayment;
 import com.chitmanager.backend.models.Member;
+import com.chitmanager.backend.models.PaymentMode;
 import com.chitmanager.backend.repositories.LoanRepository;
 import com.chitmanager.backend.repositories.LoanPaymentRepository;
 import com.chitmanager.backend.repositories.MemberRepository;
@@ -47,17 +48,18 @@ public class LoanService {
         loan.setStatus("ACTIVE");
         loan.setRemarks(dto.getRemarks());
         loan.setInterestType(dto.getInterestType() != null ? dto.getInterestType() : "ACCUMULATED");
+        loan.setPaymentMode(dto.getPaymentMode());
 
         if (dto.getEndDate() != null) {
             // If end date is supplied at creation, close it immediately
-            closeLoanCalculations(loan, dto.getEndDate());
+            closeLoanCalculations(loan, dto.getEndDate(), dto.getPaymentMode());
         }
 
         return mapToDTO(loanRepository.save(loan));
     }
 
     @Transactional
-    public LoanDTO closeLoan(Long loanId, LocalDate endDate) {
+    public LoanDTO closeLoan(Long loanId, LocalDate endDate, PaymentMode paymentMode) {
         String tenantId = SecurityUtils.getTenantId();
         Loan loan = loanRepository.findByTenantIdAndId(tenantId, loanId)
                 .orElseThrow(() -> new RuntimeException("Loan record not found"));
@@ -66,7 +68,7 @@ public class LoanService {
             throw new RuntimeException("Loan is already closed");
         }
 
-        closeLoanCalculations(loan, endDate);
+        closeLoanCalculations(loan, endDate, paymentMode);
         return mapToDTO(loanRepository.save(loan));
     }
 
@@ -87,6 +89,7 @@ public class LoanService {
         payment.setPaymentDate(dto.getPaymentDate());
         payment.setPaymentType(dto.getPaymentType() != null ? dto.getPaymentType() : "INTEREST");
         payment.setRemarks(dto.getRemarks());
+        payment.setPaymentMode(dto.getPaymentMode());
 
         LoanPayment saved = loanPaymentRepository.save(payment);
         return mapPaymentToDTO(saved);
@@ -104,7 +107,7 @@ public class LoanService {
                 .collect(Collectors.toList());
     }
 
-    private void closeLoanCalculations(Loan loan, LocalDate endDate) {
+    private void closeLoanCalculations(Loan loan, LocalDate endDate, PaymentMode paymentMode) {
         LocalDate startDate = loan.getStartDate();
         if (endDate.isBefore(startDate)) {
             throw new RuntimeException("End date cannot be before start date");
@@ -180,6 +183,7 @@ public class LoanService {
             principalPay.setPaymentDate(endDate);
             principalPay.setPaymentType("PRINCIPAL");
             principalPay.setRemarks("Principal repayment on closure");
+            principalPay.setPaymentMode(paymentMode);
             loanPaymentRepository.save(principalPay);
 
             // Record outstanding interest payment if any
@@ -192,6 +196,7 @@ public class LoanService {
                     finalInterestPay.setPaymentDate(endDate);
                     finalInterestPay.setPaymentType("INTEREST");
                     finalInterestPay.setRemarks("Outstanding interest repayment on closure");
+                    finalInterestPay.setPaymentMode(paymentMode);
                     loanPaymentRepository.save(finalInterestPay);
                 }
             } else {
@@ -204,6 +209,7 @@ public class LoanService {
                     finalInterestPay.setPaymentDate(endDate);
                     finalInterestPay.setPaymentType("INTEREST");
                     finalInterestPay.setRemarks("Accumulated interest repayment on closure");
+                    finalInterestPay.setPaymentMode(paymentMode);
                     loanPaymentRepository.save(finalInterestPay);
                 }
             }
@@ -232,6 +238,7 @@ public class LoanService {
         dto.setTotalRepayableAmount(loan.getTotalRepayableAmount());
         dto.setRemarks(loan.getRemarks());
         dto.setInterestType(loan.getInterestType() != null ? loan.getInterestType() : "ACCUMULATED");
+        dto.setPaymentMode(loan.getPaymentMode());
 
         if (loan.getId() != null) {
             BigDecimal collected = loanPaymentRepository.findByTenantIdAndLoanId(loan.getTenantId(), loan.getId()).stream()
@@ -264,6 +271,7 @@ public class LoanService {
         dto.setPaymentDate(p.getPaymentDate());
         dto.setPaymentType(p.getPaymentType());
         dto.setRemarks(p.getRemarks());
+        dto.setPaymentMode(p.getPaymentMode());
         return dto;
     }
 }

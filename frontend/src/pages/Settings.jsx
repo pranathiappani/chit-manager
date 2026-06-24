@@ -414,7 +414,7 @@ const SettingsPage = () => {
                           <Wallet size={18} style={{ color: theme.palette.primary.main }} />
                         </Box>
                         <Box>
-                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.65rem' }}>User ID / Tenant ID</Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.65rem' }}>Tenant ID</Typography>
                           <Typography variant="body1" sx={{ fontWeight: 800 }}>{profile?.tenantId || 'N/A'}</Typography>
                         </Box>
                       </Box>
@@ -684,7 +684,7 @@ const SettingsPage = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                   <Wallet size={16} style={{ color: theme.palette.primary.main, opacity: 0.8 }} />
                   <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2 }}>User ID / Tenant ID</Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2 }}>Tenant ID</Typography>
                     <Typography variant="body2" sx={{ fontWeight: 700 }}>{profile?.tenantId || 'N/A'}</Typography>
                   </Box>
                 </Box>

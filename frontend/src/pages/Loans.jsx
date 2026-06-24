@@ -3,6 +3,7 @@ import { Box, Card, CardContent, Typography, Grid, Table, TableBody, TableCell, 
 import { Landmark, ArrowUpRight, CheckCircle, Clock, Percent, DollarSign, Calendar, ChevronUp, ChevronDown, Search, X } from 'lucide-react';
 import api from '../api/axiosConfig';
 import { useToast } from '../components/ToastProvider';
+import { useConfirm } from '../components/ConfirmProvider';
 
 const StatCard = ({ title, value, icon, color }) => (
   <Card sx={{ width: '100%', height: '100%', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-2px)' } }}>
@@ -37,12 +38,23 @@ const MobileRepaymentCard = ({ payment }) => {
           <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
             {payment.paymentDate}
           </Typography>
-          <Chip 
-            label={payment.paymentType} 
-            size="small" 
-            color={payment.paymentType === 'PRINCIPAL' ? 'primary' : 'success'} 
-            sx={{ fontWeight: 'bold', fontSize: '0.65rem', height: 18, mt: 0.5 }}
-          />
+          <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
+            <Chip 
+              label={payment.paymentType} 
+              size="small" 
+              color={payment.paymentType === 'PRINCIPAL' ? 'primary' : 'success'} 
+              sx={{ fontWeight: 'bold', fontSize: '0.65rem', height: 18 }}
+            />
+            {payment.paymentMode && (
+              <Chip 
+                label={payment.paymentMode} 
+                size="small" 
+                color="primary" 
+                variant="outlined"
+                sx={{ fontWeight: 'bold', fontSize: '0.65rem', height: 18 }}
+              />
+            )}
+          </Box>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: payment.paymentType === 'PRINCIPAL' ? 'primary.main' : 'success.main' }}>
@@ -67,6 +79,7 @@ const Loans = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const [searchQueryRepayments, setSearchQueryRepayments] = useState('');
   const [loans, setLoans] = useState([]);
   const [members, setMembers] = useState([]);
@@ -84,19 +97,22 @@ const Loans = () => {
     interestRate: '',
     startDate: new Date().toISOString().split('T')[0],
     remarks: '',
-    interestType: 'ACCUMULATED'
+    interestType: 'ACCUMULATED',
+    paymentMode: 'CASH'
   });
 
   // Close Loan Dialog State
   const [selectedLoan, setSelectedLoan] = useState(null);
   const [closeDate, setCloseDate] = useState(new Date().toISOString().split('T')[0]);
+  const [closePaymentMode, setClosePaymentMode] = useState('CASH');
   const [interestPreview, setInterestPreview] = useState({ days: 0, interest: 0, collected: 0, remaining: 0, total: 0 });
 
   // Collect Interest Dialog State
   const [interestPayment, setInterestPayment] = useState({
     amount: '',
     paymentDate: new Date().toISOString().split('T')[0],
-    remarks: ''
+    remarks: '',
+    paymentMode: 'CASH'
   });
 
   // Log Payments State
@@ -134,7 +150,8 @@ const Loans = () => {
       interestRate: '',
       startDate: new Date().toISOString().split('T')[0],
       remarks: '',
-      interestType: 'ACCUMULATED'
+      interestType: 'ACCUMULATED',
+      paymentMode: 'CASH'
     });
     setOpenCreate(true);
   };
@@ -156,23 +173,35 @@ const Loans = () => {
         interestRate: Number(newLoan.interestRate),
         startDate: newLoan.startDate,
         remarks: newLoan.remarks,
-        interestType: newLoan.interestType
+        interestType: newLoan.interestType,
+        paymentMode: newLoan.paymentMode || 'CASH'
       };
       await api.post('/loans', payload);
       handleCreateClose();
       fetchLoansAndMembers();
+      showToast("Successfully issued loan!", "success");
     } catch (error) {
       console.error('Failed to issue loan', error);
+      showToast("Failed to issue loan.", "error");
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDeleteLoan = async (id) => {
-    if (window.confirm("Are you sure you want to delete this loan record? This will automatically clear all its associated payments.")) {
+    const confirmed = await confirm({
+      title: 'Delete Loan Record',
+      message: 'Are you sure you want to delete this loan record? This will automatically clear all its associated payments.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      severity: 'error'
+    });
+    
+    if (confirmed) {
       try {
         await api.delete(`/loans/${id}`);
         fetchLoansAndMembers();
+        showToast("Successfully deleted loan record!", "success");
       } catch (error) {
         console.error('Failed to delete loan', error);
         showToast("Could not delete the loan record.", "error");
@@ -276,6 +305,7 @@ const Loans = () => {
   const handleCloseOpen = (loan) => {
     setSelectedLoan(loan);
     setCloseDate(new Date().toISOString().split('T')[0]);
+    setClosePaymentMode('CASH');
     setOpenClose(true);
   };
 
@@ -289,11 +319,13 @@ const Loans = () => {
     if (!selectedLoan || !closeDate) return;
 
     try {
-      await api.post(`/loans/${selectedLoan.id}/close?endDate=${closeDate}`);
+      await api.post(`/loans/${selectedLoan.id}/close?endDate=${closeDate}&paymentMode=${closePaymentMode}`);
       handleCloseClose();
       fetchLoansAndMembers();
+      showToast("Successfully closed loan and recorded repayments!", "success");
     } catch (error) {
       console.error('Failed to close loan', error);
+      showToast("Failed to close loan.", "error");
     }
   };
 
@@ -305,7 +337,8 @@ const Loans = () => {
     setInterestPayment({
       amount: monthlyInt.toFixed(2),
       paymentDate: new Date().toISOString().split('T')[0],
-      remarks: `Monthly interest collection`
+      remarks: `Monthly interest collection`,
+      paymentMode: 'CASH'
     });
     setOpenCollectInterest(true);
   };
@@ -324,12 +357,15 @@ const Loans = () => {
         amount: Number(interestPayment.amount),
         paymentDate: interestPayment.paymentDate,
         paymentType: 'INTEREST',
-        remarks: interestPayment.remarks
+        remarks: interestPayment.remarks,
+        paymentMode: interestPayment.paymentMode || 'CASH'
       });
       handleCollectInterestClose();
       fetchLoansAndMembers();
+      showToast("Successfully logged interest collection!", "success");
     } catch (error) {
       console.error('Failed to log interest collection', error);
+      showToast("Failed to log interest collection.", "error");
     }
   };
 
@@ -435,7 +471,20 @@ const Loans = () => {
                     loans.map((loan) => (
                       <TableRow key={loan.id} sx={{ '&:hover': { backgroundColor: 'action.hover' } }}>
                         <TableCell sx={{ fontWeight: 500 }}>{loan.memberName}</TableCell>
-                        <TableCell>₹{loan.amount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                        <TableCell>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            ₹{loan.amount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </Typography>
+                          {loan.paymentMode && (
+                            <Chip
+                              label={loan.paymentMode}
+                              size="small"
+                              color="primary"
+                              variant="outlined"
+                              sx={{ fontSize: '0.65rem', height: 16, mt: 0.5, fontWeight: 'bold' }}
+                            />
+                          )}
+                        </TableCell>
                         <TableCell>
                           <Typography variant="body2" sx={{ fontWeight: 500 }}>{loan.interestRate}% / month</Typography>
                           <Chip 
@@ -595,9 +644,20 @@ const Loans = () => {
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Typography variant="body2" color="text.secondary">Principal Amount</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                      ₹{loan.amount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </Typography>
+                    <Box sx={{ textAlign: 'right' }}>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                        ₹{loan.amount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </Typography>
+                      {loan.paymentMode && (
+                        <Chip
+                          label={loan.paymentMode}
+                          size="small"
+                          color="primary"
+                          variant="outlined"
+                          sx={{ fontSize: '0.6rem', height: 16, mt: 0.5, fontWeight: 'bold' }}
+                        />
+                      )}
+                    </Box>
                   </Box>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Typography variant="body2" color="text.secondary">Interest Rate & Type</Typography>
@@ -823,6 +883,25 @@ const Loans = () => {
                 </FormControl>
               </Box>
 
+              {/* Payment Mode */}
+              <Box sx={{ width: '100%' }}>
+                <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                  Disbursement Payment Mode *
+                </Typography>
+                <FormControl fullWidth sx={{ width: '100%' }} size="small">
+                  <Select
+                    sx={{ width: '100%' }}
+                    value={newLoan.paymentMode || 'CASH'}
+                    onChange={(e) => setNewLoan({ ...newLoan, paymentMode: e.target.value })}
+                  >
+                    <MenuItem value="PHONEPE">PhonePe</MenuItem>
+                    <MenuItem value="GPAY">GPay</MenuItem>
+                    <MenuItem value="CASH">Cash</MenuItem>
+                    <MenuItem value="OTHER">Other</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+
               {/* Start Date */}
               <Box sx={{ width: '100%' }}>
                 <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
@@ -905,6 +984,26 @@ const Loans = () => {
                         </Typography>
                       </Grid>
                     </Grid>
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Box sx={{ width: '100%' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                      Repayment Payment Mode *
+                    </Typography>
+                    <FormControl fullWidth sx={{ width: '100%' }} size="small">
+                      <Select
+                        sx={{ width: '100%' }}
+                        value={closePaymentMode}
+                        onChange={(e) => setClosePaymentMode(e.target.value)}
+                      >
+                        <MenuItem value="PHONEPE">PhonePe</MenuItem>
+                        <MenuItem value="GPAY">GPay</MenuItem>
+                        <MenuItem value="CASH">Cash</MenuItem>
+                        <MenuItem value="OTHER">Other</MenuItem>
+                      </Select>
+                    </FormControl>
                   </Box>
                 </Grid>
 
@@ -1055,6 +1154,26 @@ const Loans = () => {
                 <Grid item xs={12}>
                   <Box sx={{ width: '100%' }}>
                     <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                      Receiving Payment Mode *
+                    </Typography>
+                    <FormControl fullWidth sx={{ width: '100%' }} size="small">
+                      <Select
+                        sx={{ width: '100%' }}
+                        value={interestPayment.paymentMode || 'CASH'}
+                        onChange={(e) => setInterestPayment({ ...interestPayment, paymentMode: e.target.value })}
+                      >
+                        <MenuItem value="PHONEPE">PhonePe</MenuItem>
+                        <MenuItem value="GPAY">GPay</MenuItem>
+                        <MenuItem value="CASH">Cash</MenuItem>
+                        <MenuItem value="OTHER">Other</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Box sx={{ width: '100%' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
                       Collection Date *
                     </Typography>
                     <TextField
@@ -1191,6 +1310,7 @@ const Loans = () => {
                         <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Payment Date</TableCell>
                         <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Type</TableCell>
                         <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Amount</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Payment Mode</TableCell>
                         <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Remarks</TableCell>
                       </TableRow>
                     </TableHead>
@@ -1208,6 +1328,19 @@ const Loans = () => {
                           </TableCell>
                           <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>
                             ₹{p.amount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell sx={{ py: 1.5 }}>
+                            {p.paymentMode ? (
+                              <Chip 
+                                label={p.paymentMode} 
+                                size="small" 
+                                color="primary" 
+                                variant="outlined"
+                                sx={{ fontWeight: 'bold', fontSize: '0.65rem', height: 20 }}
+                              />
+                            ) : (
+                              '-'
+                            )}
                           </TableCell>
                           <TableCell sx={{ color: 'text.secondary', py: 1.5 }}>{p.remarks || '-'}</TableCell>
                         </TableRow>

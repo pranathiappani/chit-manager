@@ -23,6 +23,14 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.security.access.prepost.PreAuthorize;
+import com.chitmanager.backend.models.PaymentMode;
+import com.chitmanager.backend.models.Loan;
+import com.chitmanager.backend.models.LoanPayment;
+import com.chitmanager.backend.repositories.LoanRepository;
+import com.chitmanager.backend.repositories.LoanPaymentRepository;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -41,6 +49,12 @@ public class DashboardController {
 
     @Autowired
     private CollectionRepository collectionRepository;
+
+    @Autowired
+    private LoanRepository loanRepository;
+
+    @Autowired
+    private LoanPaymentRepository loanPaymentRepository;
 
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> getDashboardStats() {
@@ -111,6 +125,116 @@ public class DashboardController {
 
             activeChitsCollectionDetails.add(chitDetails);
         }
+
+        // Calculate current month dates for testing
+        LocalDate today = LocalDate.now();
+        LocalDate startOfPrevMonth = today.withDayOfMonth(1);
+        LocalDate endOfPrevMonth = today.with(java.time.temporal.TemporalAdjusters.lastDayOfMonth());
+
+        // Current Month Label (e.g. "June 2026")
+        DateTimeFormatter monthFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH);
+        String previousMonthLabel = startOfPrevMonth.format(monthFormatter);
+
+        // Fetch all collections for the tenant
+        List<com.chitmanager.backend.models.Collection> allCollections = collectionRepository.findAllByTenantId(tenantId);
+        // Fetch all loan payments for the tenant
+        List<LoanPayment> allLoanPayments = loanPaymentRepository.findAllByTenantId(tenantId);
+        // Fetch all payouts for the tenant
+        List<com.chitmanager.backend.models.ActualPayout> allPayouts = actualPayoutRepository.findAllByTenantId(tenantId);
+        // Fetch all loans for the tenant
+        List<Loan> allLoans = loanRepository.findAllByTenantIdOrderByCreatedAtDesc(tenantId);
+
+        // Filter and aggregate Inflow (Money Received) for previous month
+        BigDecimal prevMonthCollectionsCash = BigDecimal.ZERO;
+        BigDecimal prevMonthCollectionsPhonepe = BigDecimal.ZERO;
+        BigDecimal prevMonthCollectionsGpay = BigDecimal.ZERO;
+        BigDecimal prevMonthCollectionsOther = BigDecimal.ZERO;
+
+        for (com.chitmanager.backend.models.Collection c : allCollections) {
+            if (CollectionStatus.PAID.equals(c.getStatus()) && c.getPaymentDate() != null) {
+                LocalDate date = c.getPaymentDate();
+                if (!date.isBefore(startOfPrevMonth) && !date.isAfter(endOfPrevMonth)) {
+                    BigDecimal amt = c.getAmountPaid() != null ? c.getAmountPaid() : BigDecimal.ZERO;
+                    PaymentMode mode = c.getPaymentMode() != null ? c.getPaymentMode() : PaymentMode.CASH; // Default to CASH
+                    switch (mode) {
+                        case PHONEPE -> prevMonthCollectionsPhonepe = prevMonthCollectionsPhonepe.add(amt);
+                        case GPAY -> prevMonthCollectionsGpay = prevMonthCollectionsGpay.add(amt);
+                        case CASH -> prevMonthCollectionsCash = prevMonthCollectionsCash.add(amt);
+                        case OTHER -> prevMonthCollectionsOther = prevMonthCollectionsOther.add(amt);
+                    }
+                }
+            }
+        }
+
+        BigDecimal prevMonthLoanRepaymentsCash = BigDecimal.ZERO;
+        BigDecimal prevMonthLoanRepaymentsPhonepe = BigDecimal.ZERO;
+        BigDecimal prevMonthLoanRepaymentsGpay = BigDecimal.ZERO;
+        BigDecimal prevMonthLoanRepaymentsOther = BigDecimal.ZERO;
+
+        for (LoanPayment lp : allLoanPayments) {
+            if (lp.getPaymentDate() != null) {
+                LocalDate date = lp.getPaymentDate();
+                if (!date.isBefore(startOfPrevMonth) && !date.isAfter(endOfPrevMonth)) {
+                    BigDecimal amt = lp.getAmount() != null ? lp.getAmount() : BigDecimal.ZERO;
+                    PaymentMode mode = lp.getPaymentMode() != null ? lp.getPaymentMode() : PaymentMode.CASH; // Default to CASH
+                    switch (mode) {
+                        case PHONEPE -> prevMonthLoanRepaymentsPhonepe = prevMonthLoanRepaymentsPhonepe.add(amt);
+                        case GPAY -> prevMonthLoanRepaymentsGpay = prevMonthLoanRepaymentsGpay.add(amt);
+                        case CASH -> prevMonthLoanRepaymentsCash = prevMonthLoanRepaymentsCash.add(amt);
+                        case OTHER -> prevMonthLoanRepaymentsOther = prevMonthLoanRepaymentsOther.add(amt);
+                    }
+                }
+            }
+        }
+
+        // Combine Inflow by Mode
+        BigDecimal totalCash = prevMonthCollectionsCash.add(prevMonthLoanRepaymentsCash);
+        BigDecimal totalPhonepe = prevMonthCollectionsPhonepe.add(prevMonthLoanRepaymentsPhonepe);
+        BigDecimal totalGpay = prevMonthCollectionsGpay.add(prevMonthLoanRepaymentsGpay);
+        BigDecimal totalOther = prevMonthCollectionsOther.add(prevMonthLoanRepaymentsOther);
+        BigDecimal totalInflow = totalCash.add(totalPhonepe).add(totalGpay).add(totalOther);
+
+        Map<String, Object> inflowStats = new HashMap<>();
+        inflowStats.put("CASH", totalCash);
+        inflowStats.put("PHONEPE", totalPhonepe);
+        inflowStats.put("GPAY", totalGpay);
+        inflowStats.put("OTHER", totalOther);
+        inflowStats.put("total", totalInflow);
+
+        // Filter and aggregate Outflow (Money Going Out) for previous month
+        BigDecimal totalPayoutsAmt = BigDecimal.ZERO;
+        for (com.chitmanager.backend.models.ActualPayout p : allPayouts) {
+            if (p.getPayoutDate() != null) {
+                LocalDate date = p.getPayoutDate();
+                if (!date.isBefore(startOfPrevMonth) && !date.isAfter(endOfPrevMonth)) {
+                    BigDecimal amt = p.getPayoutAmount() != null ? p.getPayoutAmount() : BigDecimal.ZERO;
+                    totalPayoutsAmt = totalPayoutsAmt.add(amt);
+                }
+            }
+        }
+
+        BigDecimal totalLoansAmt = BigDecimal.ZERO;
+        for (Loan l : allLoans) {
+            if (l.getStartDate() != null) {
+                LocalDate date = l.getStartDate();
+                if (!date.isBefore(startOfPrevMonth) && !date.isAfter(endOfPrevMonth)) {
+                    BigDecimal amt = l.getAmount() != null ? l.getAmount() : BigDecimal.ZERO;
+                    totalLoansAmt = totalLoansAmt.add(amt);
+                }
+            }
+        }
+
+        BigDecimal totalOutflow = totalPayoutsAmt.add(totalLoansAmt);
+
+        Map<String, Object> outflowStats = new HashMap<>();
+        outflowStats.put("PAYOUTS", totalPayoutsAmt);
+        outflowStats.put("LOANS", totalLoansAmt);
+        outflowStats.put("total", totalOutflow);
+
+        // Put into stats map
+        stats.put("previousMonthLabel", previousMonthLabel);
+        stats.put("inflowStats", inflowStats);
+        stats.put("outflowStats", outflowStats);
 
         stats.put("totalActiveChits", totalActiveChits);
         stats.put("totalMembers", totalMembers);

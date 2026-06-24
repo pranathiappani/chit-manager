@@ -3,6 +3,7 @@ import { Box, Card, CardContent, Typography, Grid, Table, TableBody, TableCell, 
 import { useForm, useWatch, Controller } from 'react-hook-form';
 import api from '../api/axiosConfig';
 import { useToast } from '../components/ToastProvider';
+import { useConfirm } from '../components/ConfirmProvider';
 import { Wallet, CheckCircle, Clock, TrendingUp, X } from 'lucide-react';
 import { formatMonth } from '../utils/dateUtils';
 
@@ -28,6 +29,7 @@ const StatCard = ({ title, value, icon, color }) => (
 
 const Payouts = () => {
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const [chits, setChits] = useState([]);
   const [selectedChit, setSelectedChit] = useState('');
   const [members, setMembers] = useState([]);
@@ -115,39 +117,61 @@ const Payouts = () => {
         payoutMonth: Number(data.payoutMonth),
         payoutAmount: Number(data.payoutAmount),
         payoutDate: data.payoutDate,
-        remarks: data.remarks
+        remarks: data.remarks,
+        paymentMode: data.paymentMode
       };
       await api.post('/payouts', payload);
       handleClose();
       loadChitData(selectedChit); // Refresh engine summary and history
+      showToast("Successfully recorded payout!", "success");
     } catch (error) {
       console.error('Failed to record payout', error);
+      showToast("Failed to record payout.", "error");
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDeletePayout = async (id) => {
-    if (window.confirm("Are you sure you want to delete this payout record? This will adjust the profit metrics and outstanding balances.")) {
+    const confirmed = await confirm({
+      title: 'Delete Payout Record',
+      message: 'Are you sure you want to delete this payout record? This will adjust the profit metrics and outstanding balances.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      severity: 'error'
+    });
+    
+    if (confirmed) {
       try {
         await api.delete(`/payouts/${id}`);
         loadChitData(selectedChit);
+        showToast("Successfully deleted payout record!", "success");
       } catch (error) {
         console.error('Failed to delete payout', error);
         showToast("Could not delete the payout record.", "error");
       }
     }
   };
-
+ 
   const handleCompleteChit = async () => {
-    if (window.confirm("Are you sure you want to end this chit? This will calculate the final actual profit and lock payouts.")) {
+    const confirmed = await confirm({
+      title: 'Complete Chit Group',
+      message: 'Are you sure you want to end this chit? This will calculate the final actual profit and lock payouts.',
+      confirmText: 'End Chit',
+      cancelText: 'Cancel',
+      severity: 'warning'
+    });
+    
+    if (confirmed) {
       try {
         await api.post(`/chits/${selectedChit}/complete`);
         const response = await api.get('/chits');
         setChits(response.data);
         loadChitData(selectedChit);
+        showToast("Chit group successfully completed!", "success");
       } catch (error) {
         console.error('Failed to end chit', error);
+        showToast("Failed to complete chit group.", "error");
       }
     }
   };
@@ -289,6 +313,7 @@ const Payouts = () => {
                     <TableCell sx={{ fontWeight: 'bold' }}>Month</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>Member</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>Payout Amount</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Payment Mode</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>Payout Date</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>Remarks</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
@@ -307,6 +332,19 @@ const Payouts = () => {
                         <TableCell>Month {payout.payoutMonth} ({formatMonth(selectedChitData?.startMonth, payout.payoutMonth)})</TableCell>
                         <TableCell sx={{ fontWeight: 500 }}>{payout.memberName}</TableCell>
                         <TableCell>₹{payout.payoutAmount?.toLocaleString()}</TableCell>
+                        <TableCell>
+                          {payout.paymentMode ? (
+                            <Chip
+                              label={payout.paymentMode}
+                              size="small"
+                              color="primary"
+                              variant="outlined"
+                              sx={{ fontWeight: 'bold', fontSize: '0.72rem', height: 20 }}
+                            />
+                          ) : (
+                            '-'
+                          )}
+                        </TableCell>
                         <TableCell>{payout.payoutDate}</TableCell>
                         <TableCell>{payout.remarks || '-'}</TableCell>
                         <TableCell>
@@ -356,6 +394,18 @@ const Payouts = () => {
                             ₹{payout.payoutAmount?.toLocaleString()}
                           </Typography>
                         </Box>
+                        {payout.paymentMode && (
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography variant="body2" color="text.secondary">Payment Mode</Typography>
+                            <Chip 
+                              label={payout.paymentMode} 
+                              size="small" 
+                              color="primary"
+                              variant="outlined"
+                              sx={{ fontWeight: 'bold', fontSize: '0.65rem', height: 18 }}
+                            />
+                          </Box>
+                        )}
                         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                           <Typography variant="body2" color="text.secondary">Payout Date</Typography>
                           <Typography variant="body2" sx={{ fontWeight: 500 }}>{payout.payoutDate}</Typography>
@@ -491,6 +541,32 @@ const Payouts = () => {
                     error={!!errors.payoutAmount}
                     size="small"
                   />
+                </Box>
+              </Grid>
+              <Grid item xs={12}>
+                <Box sx={{ width: '100%' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                    Payment Mode *
+                  </Typography>
+                  <FormControl fullWidth sx={{ width: '100%' }} size="small" error={!!errors.paymentMode}>
+                    <Controller
+                      name="paymentMode"
+                      control={control}
+                      rules={{ required: 'Payment mode is required' }}
+                      defaultValue="CASH"
+                      render={({ field }) => (
+                        <Select
+                          {...field}
+                          sx={{ width: '100%' }}
+                        >
+                          <MenuItem value="PHONEPE">PhonePe</MenuItem>
+                          <MenuItem value="GPAY">GPay</MenuItem>
+                          <MenuItem value="CASH">Cash</MenuItem>
+                          <MenuItem value="OTHER">Other</MenuItem>
+                        </Select>
+                      )}
+                    />
+                  </FormControl>
                 </Box>
               </Grid>
               <Grid item xs={12}>

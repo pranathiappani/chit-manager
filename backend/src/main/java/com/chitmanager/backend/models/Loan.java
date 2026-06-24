@@ -55,6 +55,10 @@ public class Loan {
     @Convert(converter = CryptoConverter.class)
     private String remarks;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_mode", nullable = true)
+    private PaymentMode paymentMode;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;

@@ -1,19 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Card, Typography, Table, TableBody, TableCell, TableHead, TableRow, MenuItem, Select, FormControl, InputLabel, Button, Chip, TextField, IconButton, Tooltip, CircularProgress } from '@mui/material';
-import { MessageCircle } from 'lucide-react';
+import { Box, Card, Typography, Table, TableBody, TableCell, TableHead, TableRow, MenuItem, Select, FormControl, InputLabel, Button, Chip, TextField, IconButton, Tooltip, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { MessageCircle, X } from 'lucide-react';
 import api from '../api/axiosConfig';
 import { formatMonth } from '../utils/dateUtils';
 import { useToast } from '../components/ToastProvider';
+import { useConfirm } from '../components/ConfirmProvider';
 
 const Collections = () => {
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const [chits, setChits] = useState([]);
   const [selectedChit, setSelectedChit] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('');
   const [members, setMembers] = useState([]);
   const [collections, setCollections] = useState({});
   const [payouts, setPayouts] = useState([]);
-  const [rowRemarks, setRowRemarks] = useState({});
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [activePaymentSlot, setActivePaymentSlot] = useState(null);
+  const [dialogPaymentMode, setDialogPaymentMode] = useState('CASH');
+  const [dialogPaymentDate, setDialogPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [dialogRemarks, setDialogRemarks] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -94,11 +100,21 @@ const Collections = () => {
     return selectedChitData.baseContribution;
   };
 
-  const handleMarkPaid = async (memberId, chitMemberId) => {
+  const handleOpenPaymentDialog = (memberId, chitMemberId, memberName) => {
+    const amountDue = getAmountDue(memberId);
+    setActivePaymentSlot({ memberId, chitMemberId, memberName, amountDue });
+    setDialogPaymentMode('CASH');
+    setDialogPaymentDate(new Date().toISOString().split('T')[0]);
+    setDialogRemarks('');
+    setPaymentDialogOpen(true);
+  };
+
+  const handleConfirmMarkPaid = async () => {
+    if (!activePaymentSlot) return;
+    const { memberId, chitMemberId, amountDue } = activePaymentSlot;
+    const slotKey = chitMemberId || memberId;
+    
     try {
-      const amountDue = getAmountDue(memberId);
-      const slotKey = chitMemberId || memberId;
-      const remark = rowRemarks[slotKey] || '';
       const payload = {
         chitGroupId: selectedChit,
         memberId: memberId,
@@ -106,26 +122,32 @@ const Collections = () => {
         forMonth: selectedMonth,
         amountPaid: amountDue,
         status: 'PAID',
-        paymentDate: new Date().toISOString().split('T')[0],
-        remarks: remark
+        paymentDate: dialogPaymentDate,
+        remarks: dialogRemarks,
+        paymentMode: dialogPaymentMode
       };
       
       const response = await api.post('/collections', payload);
       setCollections(prev => ({ ...prev, [slotKey]: response.data }));
-      
-      // Clear the remarks input for this member slot after successful marking
-      setRowRemarks(prev => {
-        const copy = { ...prev };
-        delete copy[slotKey];
-        return copy;
-      });
+      showToast("Successfully marked as paid!", "success");
+      setPaymentDialogOpen(false);
+      setActivePaymentSlot(null);
     } catch (error) {
       console.error('Failed to mark paid', error);
+      showToast("Failed to mark as paid.", "error");
     }
   };
 
   const handleUnmarkPaid = async (slotKey, collectionId) => {
-    if (window.confirm("Are you sure you want to unmark this collection as paid?")) {
+    const confirmed = await confirm({
+      title: 'Unmark Collection',
+      message: 'Are you sure you want to unmark this collection as paid?',
+      confirmText: 'Unmark',
+      cancelText: 'Cancel',
+      severity: 'warning'
+    });
+    
+    if (confirmed) {
       try {
         await api.delete(`/collections/${collectionId}`);
         setCollections(prev => {
@@ -133,6 +155,7 @@ const Collections = () => {
           delete copy[slotKey];
           return copy;
         });
+        showToast("Successfully unmarked as paid!", "success");
       } catch (error) {
         console.error('Failed to unmark paid', error);
         showToast("Failed to unmark paid. Please check the backend connection.", "error");
@@ -276,6 +299,7 @@ const Collections = () => {
                   <TableHead>
                     <TableRow sx={{ backgroundColor: 'background.default' }}>
                       <TableCell sx={{ fontWeight: 'bold' }}>Member Name</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Spot</TableCell>
                       <TableCell sx={{ fontWeight: 'bold' }}>Amount Due</TableCell>
                       <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
                       <TableCell sx={{ fontWeight: 'bold' }}>Payment Date</TableCell>
@@ -286,114 +310,125 @@ const Collections = () => {
                   <TableBody>
                     {loading ? (
                       <TableRow>
-                        <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                        <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
                           <CircularProgress size={30} />
                         </TableCell>
                       </TableRow>
                     ) : members.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
+                        <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
                           No members assigned to this chit yet.
                         </TableCell>
                       </TableRow>
                     ) : groupedMembers.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                        <TableCell colSpan={7} align="center" sx={{ py: 3, color: 'text.secondary' }}>
                           No members match "{searchQuery}".
                         </TableCell>
                       </TableRow>
                     ) : (
-                      groupedMembers.map((groupedMember) => {
+                      groupedMembers.flatMap((groupedMember) => {
                         const amountDuePerSlot = getAmountDue(groupedMember.id);
-                        return (
-                          <TableRow key={groupedMember.id} hover>
-                            <TableCell sx={{ fontWeight: 500, verticalAlign: 'top', pt: 2.5 }}>
-                              {groupedMember.name}
-                              {groupedMember.slots.length > 1 && (
-                                <span style={{ fontSize: '0.8rem', color: 'gray', display: 'block' }}>
-                                  ({groupedMember.slots.length} spots)
-                                </span>
+                        return groupedMember.slots.map((slot, sIdx) => {
+                          const slotKey = slot.chitMemberId || slot.id;
+                          const collection = collections[slotKey];
+                          const isPaid = collection?.status === 'PAID';
+                          const label = groupedMember.slots.length > 1 ? `Spot #${sIdx + 1}` : `Spot`;
+                          
+                          return (
+                            <TableRow key={slotKey} hover>
+                              {sIdx === 0 && (
+                                <TableCell 
+                                  rowSpan={groupedMember.slots.length} 
+                                  sx={{ 
+                                    fontWeight: 600, 
+                                    verticalAlign: 'top', 
+                                    pt: 2.5,
+                                    borderRight: '1px solid',
+                                    borderColor: 'divider',
+                                    backgroundColor: 'background.paper'
+                                  }}
+                                >
+                                  {groupedMember.name}
+                                  {groupedMember.slots.length > 1 && (
+                                    <span style={{ fontSize: '0.8rem', color: 'gray', display: 'block', fontWeight: 'normal' }}>
+                                      ({groupedMember.slots.length} spots)
+                                    </span>
+                                  )}
+                                </TableCell>
                               )}
-                            </TableCell>
-                            <TableCell colSpan={5} sx={{ p: 0 }}>
-                              <Table size="small" sx={{ borderCollapse: 'collapse', '& td': { borderBottom: 'none' } }}>
-                                <TableBody>
-                                  {groupedMember.slots.map((slot, sIdx) => {
-                                    const slotKey = slot.chitMemberId || slot.id;
-                                    const collection = collections[slotKey];
-                                    const isPaid = collection?.status === 'PAID';
-                                    const label = groupedMember.slots.length > 1 ? `Spot #${sIdx + 1}` : `Spot`;
-                                    
-                                    return (
-                                      <TableRow key={slotKey} hover={false} sx={{ borderBottom: sIdx < groupedMember.slots.length - 1 ? '1px solid' : 'none', borderColor: 'divider' }}>
-                                        <TableCell sx={{ width: '20%', fontWeight: 500, color: 'text.secondary' }}>{label}</TableCell>
-                                        <TableCell sx={{ width: '20%' }}>₹{amountDuePerSlot?.toLocaleString()}</TableCell>
-                                        <TableCell sx={{ width: '15%' }}>
-                                          <Chip 
-                                            label={isPaid ? 'PAID' : 'PENDING'} 
-                                            color={isPaid ? 'success' : 'warning'} 
-                                            size="small" 
-                                          />
-                                        </TableCell>
-                                        <TableCell sx={{ width: '15%' }}>{collection?.paymentDate || '-'}</TableCell>
-                                        <TableCell sx={{ width: '15%' }}>
-                                          {isPaid ? (
-                                            collection?.remarks || '-'
-                                          ) : (
-                                            <TextField
-                                              size="small"
-                                              placeholder="Remarks..."
-                                              value={rowRemarks[slotKey] || ''}
-                                              onChange={(e) => setRowRemarks(prev => ({ ...prev, [slotKey]: e.target.value }))}
-                                              sx={{ width: 140 }}
-                                            />
-                                          )}
-                                        </TableCell>
-                                        <TableCell sx={{ width: '15%', pr: 2 }}>
-                                          {isPaid ? (
-                                            <Button 
-                                              variant="outlined" 
-                                              color="error" 
-                                              size="small"
-                                              onClick={() => handleUnmarkPaid(slotKey, collection.id)}
-                                            >
-                                              Unmark
-                                            </Button>
-                                          ) : (
-                                            <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
-                                              <Button 
-                                                variant="outlined" 
-                                                color="primary" 
-                                                size="small"
-                                                onClick={() => handleMarkPaid(groupedMember.id, slot.chitMemberId)}
-                                              >
-                                                Mark Paid
-                                              </Button>
-                                              {(() => {
-                                                const status = getReminderStatus(parseInt(selectedMonth));
-                                                return (
-                                                  <Tooltip title={status.isOverdue ? "Send Overdue Reminder" : "Send Friendly Reminder"}>
-                                                    <IconButton
-                                                      color={status.isOverdue ? "error" : "success"}
-                                                      size="small"
-                                                      onClick={() => handleSendReminder(slot, amountDuePerSlot)}
-                                                    >
-                                                      <MessageCircle size={16} />
-                                                    </IconButton>
-                                                  </Tooltip>
-                                                );
-                                              })()}
-                                            </Box>
-                                          )}
-                                        </TableCell>
-                                      </TableRow>
-                                    );
-                                  })}
-                                </TableBody>
-                              </Table>
-                            </TableCell>
-                          </TableRow>
-                        );
+                              <TableCell sx={{ fontWeight: 500, color: 'text.secondary' }}>{label}</TableCell>
+                              <TableCell>₹{amountDuePerSlot?.toLocaleString()}</TableCell>
+                              <TableCell>
+                                <Chip 
+                                  label={isPaid ? 'PAID' : 'PENDING'} 
+                                  color={isPaid ? 'success' : 'warning'} 
+                                  size="small" 
+                                />
+                              </TableCell>
+                              <TableCell>{collection?.paymentDate || '-'}</TableCell>
+                              <TableCell sx={{ minWidth: 160 }}>
+                                {isPaid ? (
+                                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                    {collection?.paymentMode && (
+                                      <Chip
+                                        label={collection.paymentMode}
+                                        size="small"
+                                        color="primary"
+                                        variant="outlined"
+                                        sx={{ width: 'fit-content', fontSize: '0.68rem', height: 18, fontWeight: 'bold' }}
+                                      />
+                                    )}
+                                    <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
+                                      {collection?.remarks || '-'}
+                                    </Typography>
+                                  </Box>
+                                ) : (
+                                  <Typography variant="body2" color="text.secondary">
+                                    -
+                                  </Typography>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {isPaid ? (
+                                  <Button 
+                                    variant="outlined" 
+                                    color="error" 
+                                    size="small"
+                                    onClick={() => handleUnmarkPaid(slotKey, collection.id)}
+                                  >
+                                    Unmark
+                                  </Button>
+                                ) : (
+                                  <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                                    <Button 
+                                      variant="outlined" 
+                                      color="primary" 
+                                      size="small"
+                                      onClick={() => handleOpenPaymentDialog(groupedMember.id, slot.chitMemberId, groupedMember.name)}
+                                    >
+                                      Mark Paid
+                                    </Button>
+                                    {(() => {
+                                      const status = getReminderStatus(parseInt(selectedMonth));
+                                      return (
+                                        <Tooltip title={status.isOverdue ? "Send Overdue Reminder" : "Send Friendly Reminder"}>
+                                          <IconButton
+                                            color={status.isOverdue ? "error" : "success"}
+                                            size="small"
+                                            onClick={() => handleSendReminder(slot, amountDuePerSlot)}
+                                          >
+                                            <MessageCircle size={16} />
+                                          </IconButton>
+                                        </Tooltip>
+                                      );
+                                    })()}
+                                  </Box>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        });
                       })
                     )}
                   </TableBody>
@@ -462,18 +497,25 @@ const Collections = () => {
                                     <Typography variant="body2">{collection?.paymentDate || '-'}</Typography>
                                   </Box>
                                 )}
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                                   <Typography variant="body2" color="text.secondary">Remarks / Payment Method</Typography>
                                   {isPaid ? (
-                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>{collection?.remarks || '-'}</Typography>
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                      {collection?.paymentMode && (
+                                        <Chip
+                                          label={collection.paymentMode}
+                                          size="small"
+                                          color="primary"
+                                          variant="outlined"
+                                          sx={{ width: 'fit-content', fontSize: '0.68rem', height: 18, fontWeight: 'bold' }}
+                                        />
+                                      )}
+                                      <Typography variant="body2" sx={{ fontWeight: 500 }}>{collection?.remarks || '-'}</Typography>
+                                    </Box>
                                   ) : (
-                                    <TextField
-                                      size="small"
-                                      fullWidth
-                                      placeholder="e.g. UPI, Cash, Bank..."
-                                      value={rowRemarks[slotKey] || ''}
-                                      onChange={(e) => setRowRemarks(prev => ({ ...prev, [slotKey]: e.target.value }))}
-                                    />
+                                    <Typography variant="body2" color="text.secondary">
+                                      -
+                                    </Typography>
                                   )}
                                 </Box>
                                 <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', pt: 1 }}>
@@ -507,7 +549,7 @@ const Collections = () => {
                                         variant="contained" 
                                         color="primary" 
                                         size="small"
-                                        onClick={() => handleMarkPaid(groupedMember.id, slot.chitMemberId)}
+                                        onClick={() => handleOpenPaymentDialog(groupedMember.id, slot.chitMemberId, groupedMember.name)}
                                         sx={{ fontWeight: 'bold' }}
                                       >
                                         Mark Paid
@@ -528,6 +570,126 @@ const Collections = () => {
           </Box>
         </>
       )}
+      {/* Mark Paid Dialog */}
+      <Dialog
+        open={paymentDialogOpen}
+        onClose={() => setPaymentDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '20px',
+            p: 1,
+            boxShadow: theme => theme.palette.mode === 'light'
+              ? '0 12px 30px rgba(0,0,0,0.06)'
+              : '0 12px 30px rgba(0,0,0,0.4)',
+            backgroundImage: 'none'
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1, pt: 2 }}>
+          <Typography variant="h6" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
+            Mark Payment
+          </Typography>
+          <IconButton size="small" onClick={() => setPaymentDialogOpen(false)}>
+            <X size={18} />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1.5 }}>
+            {activePaymentSlot && (
+              <Box sx={{ p: 2, borderRadius: '14px', backgroundColor: 'action.hover', border: '1px solid', borderColor: 'divider' }}>
+                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                  Member Name
+                </Typography>
+                <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'text.primary', mb: 1, fontFamily: "'Outfit', sans-serif" }}>
+                  {activePaymentSlot.memberName}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                  Amount Due
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 800, color: 'success.main', fontFamily: "'Outfit', sans-serif" }}>
+                  ₹{activePaymentSlot.amountDue.toLocaleString()}
+                </Typography>
+              </Box>
+            )}
+
+            <FormControl size="small" fullWidth>
+              <InputLabel id="payment-dialog-mode-label">Mode of Payment</InputLabel>
+              <Select
+                labelId="payment-dialog-mode-label"
+                value={dialogPaymentMode}
+                label="Mode of Payment"
+                onChange={(e) => setDialogPaymentMode(e.target.value)}
+              >
+                <MenuItem value="PHONEPE">PhonePe</MenuItem>
+                <MenuItem value="GPAY">GPay</MenuItem>
+                <MenuItem value="CASH">Cash</MenuItem>
+                <MenuItem value="OTHER">Other</MenuItem>
+              </Select>
+            </FormControl>
+
+            <TextField
+              fullWidth
+              label="Date Paid"
+              type="date"
+              size="small"
+              value={dialogPaymentDate}
+              onChange={(e) => setDialogPaymentDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+
+            <TextField
+              fullWidth
+              label="Remarks"
+              placeholder="Add optional payment remarks..."
+              value={dialogRemarks}
+              onChange={(e) => setDialogRemarks(e.target.value)}
+              size="small"
+              multiline
+              rows={2}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, pt: 1.5, display: 'flex', gap: 1.5 }}>
+          <Button
+            fullWidth
+            variant="outlined"
+            onClick={() => setPaymentDialogOpen(false)}
+            sx={{
+              borderRadius: '12px',
+              textTransform: 'none',
+              fontWeight: 700,
+              fontSize: '0.9rem',
+              fontFamily: "'Outfit', sans-serif",
+              py: 0.75,
+              borderColor: 'divider',
+              color: 'text.secondary'
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            fullWidth
+            variant="contained"
+            onClick={handleConfirmMarkPaid}
+            sx={{
+              borderRadius: '12px',
+              textTransform: 'none',
+              fontWeight: 700,
+              fontSize: '0.9rem',
+              fontFamily: "'Outfit', sans-serif",
+              py: 0.75,
+              boxShadow: 'none',
+              '&:hover': {
+                boxShadow: 'none'
+              }
+            }}
+          >
+            Mark Paid
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

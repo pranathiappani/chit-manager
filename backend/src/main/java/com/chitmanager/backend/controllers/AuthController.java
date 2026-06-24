@@ -63,12 +63,12 @@ public class AuthController {
                     .body(Map.of("message", "Error: Username is already taken!"));
         }
 
-        // Generate next automatic sequential tenant ID
+        // Generate next automatic sequential tenant ID in the format T-001, T-002, etc.
         long count = tenantRepository.count();
-        String nextTenantId = String.valueOf(count + 1);
+        String nextTenantId = String.format("T-%03d", count + 1);
         while (tenantRepository.findByTenantId(nextTenantId).isPresent()) {
             count++;
-            nextTenantId = String.valueOf(count + 1);
+            nextTenantId = String.format("T-%03d", count + 1);
         }
 
         // Create new tenant account with ROLE_ADMIN role so they can configure their own data

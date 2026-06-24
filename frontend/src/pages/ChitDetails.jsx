@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Box, Card, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, Chip, TextField, Grid, IconButton, FormControl, InputLabel, Select, MenuItem, CircularProgress, Collapse, Tabs, Tab, useMediaQuery, useTheme, InputAdornment, Paper } from '@mui/material';
-import { ArrowLeft, UserPlus, Trash2, Users, Clock, ChevronDown, ChevronUp, Receipt, Search, X, Settings2 } from 'lucide-react';
+import { Box, Card, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, Chip, TextField, Grid, IconButton, FormControl, InputLabel, Select, MenuItem, CircularProgress, Collapse, Tabs, Tab, useMediaQuery, useTheme, InputAdornment, Paper, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { ArrowLeft, UserPlus, Trash2, Users, Clock, ChevronDown, ChevronUp, Receipt, Search, X, Settings2, Filter } from 'lucide-react';
 import api from '../api/axiosConfig';
 import { useToast } from '../components/ToastProvider';
+import { useConfirm } from '../components/ConfirmProvider';
 
 // Helper function to extract initials from a name
 const getInitials = (name) => {
@@ -170,9 +171,20 @@ const MobileLedgerRow = ({ memberGroup }) => {
                 <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
                   Date: {payment.paymentDate || '-'}
                 </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'success.main' }}>
-                  ₹{payment.totalAmountPaid.toLocaleString()}
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {memberGroup.paymentMode && (
+                    <Chip
+                      label={memberGroup.paymentMode}
+                      size="small"
+                      color="primary"
+                      variant="outlined"
+                      sx={{ fontSize: '0.68rem', height: 18, fontWeight: 'bold' }}
+                    />
+                  )}
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                    ₹{payment.totalAmountPaid.toLocaleString()}
+                  </Typography>
+                </Box>
               </Box>
               <Box sx={{ mb: 1 }}>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>Cleared Months</Typography>
@@ -260,6 +272,7 @@ const ChitDetails = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
 
   // Main State
   const [chit, setChit] = useState(null);
@@ -281,6 +294,7 @@ const ChitDetails = () => {
   const [recordingPayments, setRecordingPayments] = useState(false);
   const [pendingDuesRemarks, setPendingDuesRemarks] = useState('');
   const [searchQueryPendingDues, setSearchQueryPendingDues] = useState('');
+  const [pendingPaymentMode, setPendingPaymentMode] = useState('CASH');
 
   // Tab 3: Payout plans state
   const [payoutPlansState, setPayoutPlansState] = useState([]);
@@ -291,6 +305,11 @@ const ChitDetails = () => {
   const [ledgerData, setLedgerData] = useState([]);
   const [loadingLedger, setLoadingLedger] = useState(false);
   const [searchQueryLedger, setSearchQueryLedger] = useState('');
+  const [ledgerPaymentModeFilter, setLedgerPaymentModeFilter] = useState('ALL');
+  const [ledgerMemberFilter, setLedgerMemberFilter] = useState('ALL');
+  const [ledgerMonthFilter, setLedgerMonthFilter] = useState('ALL');
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [ledgerCalendarMonthFilter, setLedgerCalendarMonthFilter] = useState(new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
 
   // Load Main Chit Details
   const fetchChitDetails = async () => {
@@ -376,7 +395,15 @@ const ChitDetails = () => {
   };
 
   const handleRemoveMember = async (memberId) => {
-    if (window.confirm("Are you sure you want to remove this member from the chit group?")) {
+    const confirmed = await confirm({
+      title: 'Remove Member',
+      message: 'Are you sure you want to remove this member from the chit group?',
+      confirmText: 'Remove',
+      cancelText: 'Cancel',
+      severity: 'warning'
+    });
+    
+    if (confirmed) {
       try {
         await api.delete(`/chits/${id}/members/${memberId}`);
         fetchAssignedMembers();
@@ -438,28 +465,30 @@ const ChitDetails = () => {
 
     setRecordingPayments(true);
     try {
-      for (const due of duesToPay) {
-        const payload = {
-          chitGroupId: id,
-          memberId: due.memberId,
-          chitMemberId: due.chitMemberId,
-          forMonth: due.monthNumber,
-          amountPaid: due.amountDue,
-          status: 'PAID',
-          paymentDate: new Date().toISOString().split('T')[0],
-          remarks: pendingDuesRemarks.trim() || `Paid via Pending Dues workspace (Month ${due.monthNumber})`
-        };
-        await api.post('/collections', payload);
-      }
-      setSelectedDues({});
-      setPendingDuesRemarks('');
-      fetchPendingDues();
-      showToast("Successfully recorded payments!", "success");
+       for (const due of duesToPay) {
+         const payload = {
+           chitGroupId: id,
+           memberId: due.memberId,
+           chitMemberId: due.chitMemberId,
+           forMonth: due.monthNumber,
+           amountPaid: due.amountDue,
+           status: 'PAID',
+           paymentDate: new Date().toISOString().split('T')[0],
+           remarks: pendingDuesRemarks.trim() || `Paid via Pending Dues workspace (Month ${due.monthNumber})`,
+           paymentMode: pendingPaymentMode
+         };
+         await api.post('/collections', payload);
+       }
+       setSelectedDues({});
+       setPendingDuesRemarks('');
+       setPendingPaymentMode('CASH');
+       fetchPendingDues();
+       showToast("Successfully recorded payments!", "success");
     } catch (error) {
-      console.error("Failed to record payments", error);
-      showToast("An error occurred while recording payments.", "error");
+       console.error("Failed to record payments", error);
+       showToast("An error occurred while recording payments.", "error");
     } finally {
-      setRecordingPayments(false);
+       setRecordingPayments(false);
     }
   };
 
@@ -552,12 +581,13 @@ const ChitDetails = () => {
       const list = res.data || [];
       list.forEach(c => {
         if (c.status === 'PAID') {
-          const key = `${c.memberId}-${c.paymentDate}-${c.remarks || ''}`;
+          const key = `${c.memberId}-${c.paymentDate}-${c.remarks || ''}-${c.paymentMode || ''}`;
           if (!groups[key]) {
             groups[key] = {
               memberName: c.memberName,
               paymentDate: c.paymentDate,
               remarks: c.remarks || '-',
+              paymentMode: c.paymentMode,
               totalPaid: 0,
               payments: []
             };
@@ -574,13 +604,15 @@ const ChitDetails = () => {
           memberName: g.memberName,
           paymentDate: g.paymentDate,
           remarks: g.remarks,
+          paymentMode: g.paymentMode,
           totalPaid: g.totalPaid,
           clearedMonths: [...new Set(cleared)],
           payments: g.payments.map(p => ({
             paymentDate: p.paymentDate,
             totalAmountPaid: p.amountPaid,
             clearedMonths: [p.forMonth],
-            remarks: p.remarks
+            remarks: p.remarks,
+            paymentMode: p.paymentMode
           }))
         };
       });
@@ -594,9 +626,25 @@ const ChitDetails = () => {
     }
   };
 
+  const handleResetFilters = () => {
+    setLedgerMemberFilter('ALL');
+    setLedgerMonthFilter('ALL');
+    setLedgerPaymentModeFilter('ALL');
+    setSearchQueryLedger('');
+    setLedgerCalendarMonthFilter(new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
+  };
+
   // Delete Chit Group
   const handleDeleteChit = async () => {
-    if (window.confirm("Are you sure you want to delete this chit group? This action cannot be undone.")) {
+    const confirmed = await confirm({
+      title: 'Delete Chit Group',
+      message: 'Are you sure you want to delete this chit group? This action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      severity: 'error'
+    });
+    
+    if (confirmed) {
       try {
         await api.delete(`/chits/${id}`);
         navigate('/chits');
@@ -943,16 +991,34 @@ const ChitDetails = () => {
                 </Button>
               </Grid>
               {Object.keys(selectedDues).length > 0 && (
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Payment Remarks / Reference"
-                    placeholder="e.g., Paid cash / Bank transfer ID"
-                    size="small"
-                    value={pendingDuesRemarks}
-                    onChange={(e) => setPendingDuesRemarks(e.target.value)}
-                  />
-                </Grid>
+                <>
+                  <Grid item xs={12} sm={4}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel id="pending-payment-mode-label">Payment Mode</InputLabel>
+                      <Select
+                        labelId="pending-payment-mode-label"
+                        value={pendingPaymentMode}
+                        label="Payment Mode"
+                        onChange={(e) => setPendingPaymentMode(e.target.value)}
+                      >
+                        <MenuItem value="PHONEPE">PhonePe</MenuItem>
+                        <MenuItem value="GPAY">GPay</MenuItem>
+                        <MenuItem value="CASH">Cash</MenuItem>
+                        <MenuItem value="OTHER">Other</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={8}>
+                    <TextField
+                      fullWidth
+                      label="Payment Remarks / Reference"
+                      placeholder="e.g., Paid cash / Bank transfer ID"
+                      size="small"
+                      value={pendingDuesRemarks}
+                      onChange={(e) => setPendingDuesRemarks(e.target.value)}
+                    />
+                  </Grid>
+                </>
               )}
             </Grid>
           </Card>
@@ -1225,34 +1291,314 @@ const ChitDetails = () => {
       {/* TAB 4: LEDGER HISTORY */}
       {tabValue === 3 && (
         <Card sx={{ p: { xs: 2, sm: 3 } }}>
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, mb: 3 }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-              Transaction Log
+          {/* Header Row */}
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1.5, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, mb: 2 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Receipt size={18} /> Transaction Log
             </Typography>
-            <TextField
-              placeholder="Search ledger..."
-              value={searchQueryLedger}
-              onChange={(e) => setSearchQueryLedger(e.target.value)}
-              size="small"
-              sx={{ width: { xs: '100%', sm: 250 } }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search size={16} color="#888" />
-                  </InputAdornment>
-                ),
-              }}
-            />
+            {(() => {
+              const currentMonthLabel = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+              const availableCalendarMonths = [...new Set(ledgerData.map(item => {
+                if (!item.paymentDate) return null;
+                const date = new Date(item.paymentDate);
+                return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+              }).filter(Boolean))];
+              const allDropdownMonths = [...new Set([currentMonthLabel, ...availableCalendarMonths])];
+
+              const activeCount = [
+                ledgerMemberFilter !== 'ALL',
+                ledgerMonthFilter !== 'ALL',
+                ledgerPaymentModeFilter !== 'ALL',
+                !!searchQueryLedger
+              ].filter(Boolean).length;
+              
+              return (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: { xs: '100%', sm: 'auto' }, justifyContent: 'space-between' }}>
+                  <FormControl size="small" sx={{ minWidth: 150 }}>
+                    <Select
+                      value={ledgerCalendarMonthFilter}
+                      onChange={(e) => setLedgerCalendarMonthFilter(e.target.value)}
+                      sx={{
+                        borderRadius: '10px',
+                        fontSize: '0.82rem',
+                        fontWeight: 600,
+                        height: 32,
+                        backgroundColor: 'background.paper',
+                        '& .MuiSelect-select': { py: 0.5 }
+                      }}
+                    >
+                      <MenuItem value="ALL" sx={{ fontSize: '0.82rem' }}>All Months</MenuItem>
+                      {allDropdownMonths.map(m => (
+                        <MenuItem key={m} value={m} sx={{ fontSize: '0.82rem' }}>{m}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => setFilterDialogOpen(true)}
+                    startIcon={<Filter size={15} />}
+                    sx={{
+                      borderRadius: '10px',
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      borderColor: 'divider',
+                      color: 'text.primary',
+                      px: 2,
+                      height: 32,
+                      fontSize: '0.82rem',
+                      '&:hover': {
+                        borderColor: 'primary.main',
+                        backgroundColor: 'action.hover'
+                      }
+                    }}
+                  >
+                    Filter {activeCount > 0 && `(${activeCount})`}
+                  </Button>
+                </Box>
+              );
+            })()}
           </Box>
+
+          {/* Active Filter Chips */}
+          {(() => {
+            const hasActiveFilters = ledgerMemberFilter !== 'ALL' || ledgerMonthFilter !== 'ALL' || ledgerPaymentModeFilter !== 'ALL' || !!searchQueryLedger;
+            if (!hasActiveFilters) return null;
+            
+            return (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2.5, alignItems: 'center' }}>
+                {ledgerMemberFilter !== 'ALL' && (
+                  <Chip
+                    label={`Member: ${ledgerMemberFilter}`}
+                    size="small"
+                    onDelete={() => setLedgerMemberFilter('ALL')}
+                    sx={{ borderRadius: '8px', fontSize: '0.75rem', height: 24 }}
+                  />
+                )}
+                {ledgerMonthFilter !== 'ALL' && (
+                  <Chip
+                    label={`Month: ${ledgerMonthFilter}`}
+                    size="small"
+                    onDelete={() => setLedgerMonthFilter('ALL')}
+                    sx={{ borderRadius: '8px', fontSize: '0.75rem', height: 24 }}
+                  />
+                )}
+                {ledgerPaymentModeFilter !== 'ALL' && (
+                  <Chip
+                    label={`Mode: ${ledgerPaymentModeFilter}`}
+                    size="small"
+                    onDelete={() => setLedgerPaymentModeFilter('ALL')}
+                    sx={{ borderRadius: '8px', fontSize: '0.75rem', height: 24 }}
+                  />
+                )}
+                {searchQueryLedger && (
+                  <Chip
+                    label={`Search: "${searchQueryLedger}"`}
+                    size="small"
+                    onDelete={() => setSearchQueryLedger('')}
+                    sx={{ borderRadius: '8px', fontSize: '0.75rem', height: 24 }}
+                  />
+                )}
+                <Button
+                  size="small"
+                  onClick={handleResetFilters}
+                  sx={{ textTransform: 'none', fontSize: '0.75rem', minWidth: 0, p: 0, ml: 0.5, color: 'text.secondary' }}
+                >
+                  Clear All
+                </Button>
+              </Box>
+            );
+          })()}
+
+          {/* Filter Dialog */}
+          <Dialog
+            open={filterDialogOpen}
+            onClose={() => setFilterDialogOpen(false)}
+            maxWidth="xs"
+            fullWidth
+            PaperProps={{
+              sx: {
+                borderRadius: '20px',
+                p: 1,
+                boxShadow: theme => theme.palette.mode === 'light'
+                  ? '0 12px 30px rgba(0,0,0,0.06)'
+                  : '0 12px 30px rgba(0,0,0,0.4)',
+                backgroundImage: 'none'
+              }
+            }}
+          >
+            <DialogTitle sx={{ fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1, pt: 2 }}>
+              <Typography variant="h6" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif", display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Filter size={18} /> Filter Transactions
+              </Typography>
+              <IconButton size="small" onClick={() => setFilterDialogOpen(false)}>
+                <X size={18} />
+              </IconButton>
+            </DialogTitle>
+            <DialogContent>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1.5 }}>
+                <FormControl size="small" fullWidth>
+                  <InputLabel id="dialog-member-filter-label">Filter by Member</InputLabel>
+                  <Select
+                    labelId="dialog-member-filter-label"
+                    value={ledgerMemberFilter}
+                    label="Filter by Member"
+                    onChange={(e) => setLedgerMemberFilter(e.target.value)}
+                  >
+                    <MenuItem value="ALL">All Members</MenuItem>
+                    {(() => {
+                      const ledgerMemberNames = ledgerData.map(item => item.memberName).filter(Boolean);
+                      const assignedMemberNames = assignedMembers.map(am => am.name).filter(Boolean);
+                      const uniqueMemberNames = [...new Set([...assignedMemberNames, ...ledgerMemberNames])].sort((a, b) => a.localeCompare(b));
+                      return uniqueMemberNames.map(name => (
+                        <MenuItem key={name} value={name}>{name}</MenuItem>
+                      ));
+                    })()}
+                  </Select>
+                </FormControl>
+
+                <FormControl size="small" fullWidth>
+                  <InputLabel id="dialog-month-filter-label">Filter by Chit Month</InputLabel>
+                  <Select
+                    labelId="dialog-month-filter-label"
+                    value={ledgerMonthFilter}
+                    label="Filter by Chit Month"
+                    onChange={(e) => setLedgerMonthFilter(e.target.value)}
+                  >
+                    <MenuItem value="ALL">All Months</MenuItem>
+                    {Array.from({ length: chit?.durationMonths || 0 }, (_, i) => i + 1).map(m => (
+                      <MenuItem key={m} value={m.toString()}>Month {m}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <FormControl size="small" fullWidth>
+                  <InputLabel id="dialog-payment-mode-filter-label">Filter by Mode</InputLabel>
+                  <Select
+                    labelId="dialog-payment-mode-filter-label"
+                    value={ledgerPaymentModeFilter}
+                    label="Filter by Mode"
+                    onChange={(e) => setLedgerPaymentModeFilter(e.target.value)}
+                  >
+                    <MenuItem value="ALL">All Payment Modes</MenuItem>
+                    <MenuItem value="PHONEPE">PhonePe</MenuItem>
+                    <MenuItem value="GPAY">GPay</MenuItem>
+                    <MenuItem value="CASH">Cash</MenuItem>
+                    <MenuItem value="OTHER">Other</MenuItem>
+                  </Select>
+                </FormControl>
+
+                <TextField
+                  fullWidth
+                  placeholder="Search remarks, name..."
+                  value={searchQueryLedger}
+                  onChange={(e) => setSearchQueryLedger(e.target.value)}
+                  size="small"
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Search size={16} color="#888" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Box>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2.5, pt: 1.5, display: 'flex', gap: 1.5 }}>
+              <Button
+                fullWidth
+                variant="outlined"
+                onClick={() => {
+                  handleResetFilters();
+                  setFilterDialogOpen(false);
+                }}
+                sx={{
+                  borderRadius: '12px',
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  fontFamily: "'Outfit', sans-serif",
+                  py: 0.75,
+                  borderColor: 'divider',
+                  color: 'text.secondary',
+                  '&:hover': {
+                    borderColor: 'text.primary',
+                    backgroundColor: 'transparent'
+                  }
+                }}
+              >
+                Reset All
+              </Button>
+              <Button
+                fullWidth
+                variant="contained"
+                onClick={() => setFilterDialogOpen(false)}
+                sx={{
+                  borderRadius: '12px',
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  fontFamily: "'Outfit', sans-serif",
+                  py: 0.75,
+                  boxShadow: 'none',
+                  '&:hover': {
+                    boxShadow: 'none'
+                  }
+                }}
+              >
+                Apply Filters
+              </Button>
+            </DialogActions>
+          </Dialog>
 
           {loadingLedger ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
               <CircularProgress size={30} />
             </Box>
           ) : (() => {
-            const filteredLedger = ledgerData.filter(item =>
-              item.memberName && item.memberName.toLowerCase().includes(searchQueryLedger.toLowerCase())
-            );
+            const filteredLedger = ledgerData.filter(item => {
+              const searchLower = searchQueryLedger.toLowerCase();
+              const matchesSearch = !searchQueryLedger ||
+                (item.memberName && item.memberName.toLowerCase().includes(searchLower)) ||
+                (item.remarks && item.remarks.toLowerCase().includes(searchLower)) ||
+                (item.paymentMode && item.paymentMode.toLowerCase().includes(searchLower));
+              
+              const matchesMode = ledgerPaymentModeFilter === 'ALL' || item.paymentMode === ledgerPaymentModeFilter;
+              const matchesMember = ledgerMemberFilter === 'ALL' || item.memberName === ledgerMemberFilter;
+              const matchesMonth = ledgerMonthFilter === 'ALL' || item.clearedMonths.includes(Number(ledgerMonthFilter));
+              
+              const matchesCalendarMonth = ledgerCalendarMonthFilter === 'ALL' || (() => {
+                if (!item.paymentDate) return false;
+                const date = new Date(item.paymentDate);
+                const monthLabel = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                return monthLabel === ledgerCalendarMonthFilter;
+              })();
+              
+              return matchesSearch && matchesMode && matchesMember && matchesMonth && matchesCalendarMonth;
+            });
+
+            // Group filteredLedger by calendar month
+            const groups = {};
+            filteredLedger.forEach(item => {
+              if (!item.paymentDate) return;
+              const date = new Date(item.paymentDate);
+              const monthLabel = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+              if (!groups[monthLabel]) {
+                groups[monthLabel] = {
+                  label: monthLabel,
+                  totalReceived: 0,
+                  items: []
+                };
+              }
+              groups[monthLabel].totalReceived += item.totalPaid;
+              groups[monthLabel].items.push(item);
+            });
+
+            // Sort groups by date descending (latest first)
+            const sortedGroups = Object.values(groups).sort((a, b) => {
+              return new Date(b.items[0].paymentDate) - new Date(a.items[0].paymentDate);
+            });
 
             if (ledgerData.length === 0) {
               return (
@@ -1272,9 +1618,25 @@ const ChitDetails = () => {
 
             if (isMobile) {
               return (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  {filteredLedger.map((memberGroup, idx) => (
-                    <MobileLedgerRow key={idx} memberGroup={memberGroup} />
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                  {sortedGroups.map((group) => (
+                    <Box key={group.label} sx={{ display: 'flex', flexDirection: 'column', gap: 1.2 }}>
+                      {/* Month Section Header */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 1.5, py: 0.8, borderBottom: '1px solid', borderColor: 'divider', backgroundColor: theme => theme.palette.mode === 'light' ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.02)', borderRadius: '6px' }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.primary', fontFamily: "'Outfit', sans-serif" }}>
+                          {group.label}
+                        </Typography>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'success.main', fontFamily: "'Outfit', sans-serif" }}>
+                          Total: ₹{group.totalReceived.toLocaleString()}
+                        </Typography>
+                      </Box>
+                      {/* Month Transactions */}
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        {group.items.map((memberGroup, idx) => (
+                          <MobileLedgerRow key={idx} memberGroup={memberGroup} />
+                        ))}
+                      </Box>
+                    </Box>
                   ))}
                 </Box>
               );
@@ -1287,34 +1649,67 @@ const ChitDetails = () => {
                     <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>Member Name</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>Payment Date</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>Cleared Months</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Payment Mode</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>Remarks</TableCell>
                     <TableCell sx={{ fontWeight: 'bold', pr: 3 }} align="right">Amount Paid</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredLedger.map((row, idx) => (
-                    <TableRow key={idx} hover>
-                      <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>{row.memberName}</TableCell>
-                      <TableCell>{row.paymentDate}</TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {row.clearedMonths.sort((a, b) => a - b).map(m => (
-                            <Chip
-                              key={m}
-                              label={`Month ${m}`}
-                              size="small"
-                              color="secondary"
-                              variant="outlined"
-                              sx={{ fontSize: '0.72rem', height: 20 }}
-                            />
-                          ))}
-                        </Box>
-                      </TableCell>
-                      <TableCell>{row.remarks}</TableCell>
-                      <TableCell sx={{ pr: 3, fontWeight: 'bold', color: 'success.main' }} align="right">
-                        ₹{row.totalPaid.toLocaleString()}
-                      </TableCell>
-                    </TableRow>
+                  {sortedGroups.map((group) => (
+                    <React.Fragment key={group.label}>
+                      {/* Calendar Month Header Row */}
+                      <TableRow sx={{ backgroundColor: theme => theme.palette.mode === 'light' ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)' }}>
+                        <TableCell colSpan={5} sx={{ fontWeight: 'bold', py: 1.5, pl: 3 }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.primary', fontFamily: "'Outfit', sans-serif" }}>
+                            {group.label}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 'bold', py: 1.5, pr: 3 }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'success.main', fontFamily: "'Outfit', sans-serif" }}>
+                            Total: ₹{group.totalReceived.toLocaleString()}
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                      
+                      {/* Transactions for this Month */}
+                      {group.items.map((row, idx) => (
+                        <TableRow key={idx} hover>
+                          <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>{row.memberName}</TableCell>
+                          <TableCell>{row.paymentDate}</TableCell>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                              {row.clearedMonths.sort((a, b) => a - b).map(m => (
+                                <Chip
+                                  key={m}
+                                  label={`Month ${m}`}
+                                  size="small"
+                                  color="secondary"
+                                  variant="outlined"
+                                  sx={{ fontSize: '0.72rem', height: 20 }}
+                                />
+                              ))}
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            {row.paymentMode ? (
+                              <Chip
+                                label={row.paymentMode}
+                                size="small"
+                                color="primary"
+                                variant="outlined"
+                                sx={{ fontWeight: 'bold', fontSize: '0.72rem', height: 20 }}
+                              />
+                            ) : (
+                              '-'
+                            )}
+                          </TableCell>
+                          <TableCell>{row.remarks}</TableCell>
+                          <TableCell sx={{ pr: 3, fontWeight: 'bold', color: 'success.main' }} align="right">
+                            ₹{row.totalPaid.toLocaleString()}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </React.Fragment>
                   ))}
                 </TableBody>
               </Table>

@@ -62,6 +62,7 @@ public class CollectionService {
         collection.setStatus(dto.getStatus());
         collection.setPaymentDate(dto.getPaymentDate());
         collection.setRemarks(dto.getRemarks());
+        collection.setPaymentMode(dto.getPaymentMode());
 
         return mapToDTO(collectionRepository.save(collection));
     }
@@ -103,6 +104,7 @@ public class CollectionService {
         dto.setStatus(collection.getStatus());
         dto.setPaymentDate(collection.getPaymentDate());
         dto.setRemarks(collection.getRemarks());
+        dto.setPaymentMode(collection.getPaymentMode());
         dto.setChitMemberId(collection.getChitMember() != null ? collection.getChitMember().getId() : null);
         return dto;
     }

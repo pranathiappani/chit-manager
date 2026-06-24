@@ -3,6 +3,7 @@ package com.chitmanager.backend.controllers;
 import com.chitmanager.backend.dto.LoanDTO;
 import com.chitmanager.backend.dto.LoanPaymentDTO;
 import com.chitmanager.backend.services.LoanService;
+import com.chitmanager.backend.models.PaymentMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -34,8 +35,9 @@ public class LoanController {
     @PostMapping("/{id}/close")
     public ResponseEntity<LoanDTO> closeLoan(
             @PathVariable Long id,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        return ResponseEntity.ok(loanService.closeLoan(id, endDate));
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) PaymentMode paymentMode) {
+        return ResponseEntity.ok(loanService.closeLoan(id, endDate, paymentMode));
     }
 
     @PostMapping("/{id}/payments")

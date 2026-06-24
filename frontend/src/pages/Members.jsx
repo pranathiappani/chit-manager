@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { Plus, Edit2, Trash2, Eye, Landmark, Wallet, ChevronDown, ChevronUp, Search, X } from 'lucide-react';
 import api from '../api/axiosConfig';
 import { useToast } from '../components/ToastProvider';
+import { useConfirm } from '../components/ConfirmProvider';
 
 // Helper function to extract initials from a name
 const getInitials = (name) => {
@@ -145,6 +146,7 @@ const Members = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -253,7 +255,15 @@ const Members = () => {
   };
 
   const handleDeleteMember = async (id) => {
-    if (window.confirm("Are you sure you want to delete this member? This will automatically clear all their associated loans, payments, collections, and payouts.")) {
+    const confirmed = await confirm({
+      title: 'Delete Member',
+      message: 'Are you sure you want to delete this member? This will automatically clear all their associated loans, payments, collections, and payouts.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      severity: 'error'
+    });
+    
+    if (confirmed) {
       try {
         await api.delete(`/members/${id}`);
         fetchMembers();

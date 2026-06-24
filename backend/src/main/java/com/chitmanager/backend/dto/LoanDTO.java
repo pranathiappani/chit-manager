@@ -1,6 +1,7 @@
 package com.chitmanager.backend.dto;
 
 import lombok.Data;
+import com.chitmanager.backend.models.PaymentMode;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -19,4 +20,5 @@ public class LoanDTO {
     private BigDecimal calculatedInterest;
     private BigDecimal totalRepayableAmount;
     private String remarks;
+    private PaymentMode paymentMode;
 }

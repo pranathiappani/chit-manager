@@ -65,4 +65,8 @@ public class ActualPayout {
     private Boolean earlyPayout;
 
     private Boolean delayedPayout;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_mode", nullable = true)
+    private PaymentMode paymentMode;
 }

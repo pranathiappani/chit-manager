@@ -61,6 +61,7 @@ public class PayoutService {
         
         payout.setPayoutDate(dto.getPayoutDate());
         payout.setRemarks(dto.getRemarks());
+        payout.setPaymentMode(dto.getPaymentMode());
 
         if (dto.getChitMemberId() != null) {
             ChitMember chitMember = chitMemberRepository.findByTenantIdAndId(tenantId, dto.getChitMemberId())
@@ -209,6 +210,7 @@ public class PayoutService {
         dto.setProfitAmount(payout.getProfitAmount());
         dto.setPayoutDate(payout.getPayoutDate());
         dto.setRemarks(payout.getRemarks());
+        dto.setPaymentMode(payout.getPaymentMode());
         dto.setChitMemberId(payout.getChitMember() != null ? payout.getChitMember().getId() : null);
         return dto;
     }

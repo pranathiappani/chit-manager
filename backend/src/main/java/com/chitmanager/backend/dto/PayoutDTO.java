@@ -1,6 +1,7 @@
 package com.chitmanager.backend.dto;
 
 import lombok.Data;
+import com.chitmanager.backend.models.PaymentMode;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -17,4 +18,5 @@ public class PayoutDTO {
     private LocalDate payoutDate;
     private String remarks;
     private Long chitMemberId;
+    private PaymentMode paymentMode;
 }

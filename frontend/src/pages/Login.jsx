@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store';
 import api from '../api/axiosConfig';
 import { ChevronLeft, Shield, Wallet, Users, Fingerprint, Eye, EyeOff } from 'lucide-react';
+import { useConfirm } from '../components/ConfirmProvider';
 import { BiometricAuth } from '@aparajita/capacitor-biometric-auth';
 import { Capacitor } from '@capacitor/core';
 import { keyframes } from '@mui/system';
@@ -95,6 +96,7 @@ const Login = ({ initialFlow }) => {
   const login = useAuthStore((state) => state.login);
   const theme = useTheme();
   const isLight = theme.palette.mode === 'light';
+  const { confirm } = useConfirm();
   
   // Detect if screen width is mobile/tablet (less than md size)
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -199,7 +201,14 @@ const Login = ({ initialFlow }) => {
 
         // Handle biometric or secure screen-lock credentials enrollment on native devices
         if (Capacitor.isNativePlatform() && localStorage.getItem('biometricEnabled') !== 'true') {
-          const enableBio = window.confirm('Would you like to enable secure screen lock/pattern login for faster sign-ins next time?');
+          const enableBio = await confirm({
+            title: 'Enable Biometrics?',
+            message: 'Would you like to enable secure screen lock/pattern login for faster sign-ins next time?',
+            confirmText: 'Enable',
+            cancelText: 'Maybe Later',
+            severity: 'info'
+          });
+          
           if (enableBio) {
             try {
               // Use secure obfuscated storage (requires screen-lock verification to access)
