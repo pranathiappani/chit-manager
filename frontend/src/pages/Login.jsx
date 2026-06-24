@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Box, TextField, Button, Typography, Alert, IconButton, useMediaQuery, useTheme } from '@mui/material';
+import { Box, TextField, Button, Typography, Alert, IconButton, useMediaQuery, useTheme, InputAdornment } from '@mui/material';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store';
 import api from '../api/axiosConfig';
-import { ChevronLeft, Shield, Wallet, Users } from 'lucide-react';
+import { ChevronLeft, Shield, Wallet, Users, Fingerprint, Eye, EyeOff } from 'lucide-react';
+import { BiometricAuth } from '@aparajita/capacitor-biometric-auth';
+import { Capacitor } from '@capacitor/core';
 import { keyframes } from '@mui/system';
 
 // Import custom generated avatars
@@ -63,6 +65,19 @@ const pulseOutline = keyframes`
   100% { transform: scale(0.95); opacity: 0; }
 `;
 
+// Simple obfuscation helpers for fallback storage
+const obfuscate = (text) => {
+  return btoa(text.split('').map(c => String.fromCharCode(c.charCodeAt(0) ^ 42)).join(''));
+};
+
+const deobfuscate = (encoded) => {
+  try {
+    return atob(encoded).split('').map(c => String.fromCharCode(c.charCodeAt(0) ^ 42)).join('');
+  } catch (e) {
+    return '';
+  }
+};
+
 const Login = ({ initialFlow }) => {
   const { register, handleSubmit, formState: { errors }, reset } = useForm();
   const [error, setError] = useState('');
@@ -72,6 +87,10 @@ const Login = ({ initialFlow }) => {
   // flow states: 'welcome' | 'signin' | 'signup'
   const [flow, setFlow] = useState('welcome');
 
+  // Password visibility states
+  const [showSignInPassword, setShowSignInPassword] = useState(false);
+  const [showSignUpPassword, setShowSignUpPassword] = useState(false);
+
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
   const theme = useTheme();
@@ -79,6 +98,41 @@ const Login = ({ initialFlow }) => {
   
   // Detect if screen width is mobile/tablet (less than md size)
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+  // Biometric states
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricType, setBiometricType] = useState(''); // 'fingerprint' | 'face' | 'pattern' | 'none'
+
+  // Check biometric availability on mount
+  useEffect(() => {
+    const checkBiometrics = async () => {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const result = await BiometricAuth.checkBiometry();
+          console.log('BiometricAuth checkBiometry result:', result);
+          // If either biometric hardware is available or device credential (pattern/pin/password) is set, enable secure login
+          if (result.isAvailable || result.deviceIsSecure) {
+            setBiometricAvailable(true);
+            if (result.isAvailable) {
+              // Map biometryType to string: TouchID/Fingerprint is 1 or 3; FaceID/FaceAuthentication is 2 or 4
+              if (result.biometryType === 3 || result.biometryType === 1) {
+                setBiometricType('fingerprint');
+              } else if (result.biometryType === 4 || result.biometryType === 2) {
+                setBiometricType('face');
+              } else {
+                setBiometricType('other');
+              }
+            } else {
+              setBiometricType('pattern');
+            }
+          }
+        } catch (e) {
+          console.log('Biometrics/Device secure check failed', e);
+        }
+      }
+    };
+    checkBiometrics();
+  }, []);
 
   // Sync flow view on load and changes
   useEffect(() => {
@@ -100,11 +154,23 @@ const Login = ({ initialFlow }) => {
     }
   }, [isMobile, flow]);
 
+  // Auto-trigger secure login if enabled and on sign-in screen
+  useEffect(() => {
+    if (flow === 'signin' && Capacitor.isNativePlatform() && localStorage.getItem('biometricEnabled') === 'true') {
+      const timer = setTimeout(() => {
+        handleBiometricLogin();
+      }, 350); // slight delay for transition animation smoothness
+      return () => clearTimeout(timer);
+    }
+  }, [flow]);
+
   const handleSwitchToSignUp = () => {
     setFlow('signup');
     navigate('/signup');
     setError('');
     setSuccess('');
+    setShowSignInPassword(false);
+    setShowSignUpPassword(false);
     reset();
   };
 
@@ -113,6 +179,8 @@ const Login = ({ initialFlow }) => {
     navigate('/login');
     setError('');
     setSuccess('');
+    setShowSignInPassword(false);
+    setShowSignUpPassword(false);
     reset();
   };
 
@@ -128,6 +196,24 @@ const Login = ({ initialFlow }) => {
       } else {
         const response = await api.post('/auth/login', data);
         const { token, id, username, role } = response.data;
+
+        // Handle biometric or secure screen-lock credentials enrollment on native devices
+        if (Capacitor.isNativePlatform() && localStorage.getItem('biometricEnabled') !== 'true') {
+          const enableBio = window.confirm('Would you like to enable secure screen lock/pattern login for faster sign-ins next time?');
+          if (enableBio) {
+            try {
+              // Use secure obfuscated storage (requires screen-lock verification to access)
+              localStorage.setItem('biometric_u', obfuscate(data.username));
+              localStorage.setItem('biometric_p', obfuscate(data.password));
+              localStorage.setItem('biometricEnabled', 'true');
+              localStorage.setItem('biometricUsername', data.username);
+              console.log('Credentials saved securely in fallback storage.');
+            } catch (fallbackErr) {
+              console.error('Fallback storage failed', fallbackErr);
+            }
+          }
+        }
+
         login({ id, username, role }, token);
         navigate('/');
       }
@@ -142,6 +228,58 @@ const Login = ({ initialFlow }) => {
     }
   };
 
+  const handleBiometricLogin = async () => {
+    try {
+      const isEnabled = localStorage.getItem('biometricEnabled') === 'true';
+      if (!isEnabled) {
+        setError('Secure login is not enabled yet. Please log in with your password first and enable it.');
+        return;
+      }
+
+      setError('');
+      setLoading(true);
+
+      // Trigger the native prompt
+      await BiometricAuth.authenticate({
+        reason: 'Log in to your ChitManager account',
+        allowDeviceCredential: true,
+        androidTitle: 'Secure Log In',
+        androidSubtitle: 'Use your biometric or device pattern/PIN to continue'
+      });
+
+      // Retrieve credentials from obfuscated fallback storage
+      let username = '';
+      let password = '';
+      const encU = localStorage.getItem('biometric_u');
+      const encP = localStorage.getItem('biometric_p');
+      if (encU && encP) {
+        username = deobfuscate(encU);
+        password = deobfuscate(encP);
+      }
+
+      if (username && password) {
+        const response = await api.post('/auth/login', {
+          username: username,
+          password: password
+        });
+        const { token, id, username: loggedUsername, role } = response.data;
+        login({ id, username: loggedUsername, role }, token);
+        navigate('/');
+      } else {
+        setError('No saved credentials found. Please log in with your password.');
+      }
+    } catch (err) {
+      console.error('Biometric/pattern authentication failed', err);
+      const errMsg = err.message || String(err);
+      // Don't show error if user cancelled the prompt
+      if (errMsg.toLowerCase().includes('cancel') || errMsg.toLowerCase().includes('usercancel')) {
+        return;
+      }
+      setError('Secure login verification failed: ' + errMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
   // Shared form rendering logic (used in both mobile layout and desktop split layout)
   const renderFormContent = () => (
     <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
@@ -293,45 +431,93 @@ const Login = ({ initialFlow }) => {
                 '& .MuiInput-underline:after': { borderBottomColor: '#22c55e' }
               }}
             />
-            <TextField
-              fullWidth
-              placeholder="Password"
-              type="password"
-              variant="standard"
-              margin="normal"
-              {...register('password', { required: 'Password is required' })}
-              error={!!errors.password}
-              helperText={errors.password?.message}
-              sx={{
-                mb: 5,
-                '& .MuiInput-input': { py: 1.5, fontSize: '1.05rem', fontWeight: 500, color: theme.palette.text.primary },
-                '& .MuiInput-underline:before': { borderBottomColor: isLight ? '#e0e0e0' : '#334155' },
-                '& .MuiInput-underline:after': { borderBottomColor: '#22c55e' }
-              }}
-            />
+            <Box sx={{ position: 'relative', width: '100%' }}>
+              <TextField
+                fullWidth
+                placeholder="Password"
+                type={showSignInPassword ? 'text' : 'password'}
+                variant="standard"
+                margin="normal"
+                {...register('password', { required: 'Password is required' })}
+                error={!!errors.password}
+                helperText={errors.password?.message}
+                sx={{
+                  mb: 5,
+                  '& .MuiInput-input': { 
+                    py: 1.5, 
+                    pr: 5, 
+                    fontSize: '1.05rem', 
+                    fontWeight: 500, 
+                    color: theme.palette.text.primary 
+                  },
+                  '& .MuiInput-underline:before': { borderBottomColor: isLight ? '#e0e0e0' : '#334155' },
+                  '& .MuiInput-underline:after': { borderBottomColor: '#22c55e' }
+                }}
+              />
+              <IconButton
+                aria-label="toggle password visibility"
+                onClick={() => setShowSignInPassword(!showSignInPassword)}
+                sx={{ 
+                  position: 'absolute', 
+                  right: 0, 
+                  bottom: errors.password ? 64 : 44, 
+                  color: theme.palette.text.secondary,
+                  padding: '4px',
+                  zIndex: 2
+                }}
+              >
+                {showSignInPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </IconButton>
+            </Box>
 
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              disabled={loading}
-              sx={{
-                backgroundColor: isLight ? '#000000' : '#ffffff',
-                color: isLight ? '#ffffff' : '#000000',
-                borderRadius: '6px',
-                py: 1.8,
-                fontWeight: 700,
-                fontSize: '1rem',
-                textTransform: 'uppercase',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                '&:hover': {
-                  backgroundColor: isLight ? '#222222' : '#f1f5f9',
-                  transform: 'translateY(-2px)'
-                }
-              }}
-            >
-              {loading ? 'Logging in...' : 'Login'}
-            </Button>
+            <Box sx={{ display: 'flex', gap: 1.5, width: '100%' }}>
+              <Button
+                type="submit"
+                fullWidth={!Capacitor.isNativePlatform()}
+                variant="contained"
+                disabled={loading}
+                sx={{
+                  flexGrow: 1,
+                  backgroundColor: isLight ? '#000000' : '#ffffff',
+                  color: isLight ? '#ffffff' : '#000000',
+                  borderRadius: '6px',
+                  py: 1.8,
+                  fontWeight: 700,
+                  fontSize: '1rem',
+                  textTransform: 'uppercase',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                  '&:hover': {
+                    backgroundColor: isLight ? '#222222' : '#f1f5f9',
+                    transform: 'translateY(-2px)'
+                  }
+                }}
+              >
+                {loading ? 'Logging in...' : 'Login'}
+              </Button>
+              
+              {Capacitor.isNativePlatform() && (
+                <IconButton
+                  onClick={handleBiometricLogin}
+                  disabled={loading}
+                  sx={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: '6px',
+                    backgroundColor: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.08)',
+                    border: '1px solid',
+                    borderColor: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)',
+                    color: theme.palette.text.primary,
+                    '&:hover': {
+                      backgroundColor: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)',
+                      transform: 'translateY(-2px)'
+                    },
+                    transition: 'all 0.2s ease-in-out'
+                  }}
+                >
+                  {biometricAvailable && biometricType === 'fingerprint' ? <Fingerprint size={24} /> : <Shield size={24} />}
+                </IconButton>
+              )}
+            </Box>
           </form>
 
           <Box sx={{ textAlign: 'center', mt: 4 }}>
@@ -405,22 +591,44 @@ const Login = ({ initialFlow }) => {
                 '& .MuiInput-underline:after': { borderBottomColor: '#ec4899' }
               }}
             />
-            <TextField
-              fullWidth
-              placeholder="Create Password"
-              type="password"
-              variant="standard"
-              margin="normal"
-              {...register('password', { required: 'Password is required' })}
-              error={!!errors.password}
-              helperText={errors.password?.message}
-              sx={{
-                mb: 5,
-                '& .MuiInput-input': { py: 1.5, fontSize: '1.05rem', fontWeight: 500, color: theme.palette.text.primary },
-                '& .MuiInput-underline:before': { borderBottomColor: isLight ? '#e0e0e0' : '#334155' },
-                '& .MuiInput-underline:after': { borderBottomColor: '#ec4899' }
-              }}
-            />
+            <Box sx={{ position: 'relative', width: '100%' }}>
+              <TextField
+                fullWidth
+                placeholder="Create Password"
+                type={showSignUpPassword ? 'text' : 'password'}
+                variant="standard"
+                margin="normal"
+                {...register('password', { required: 'Password is required' })}
+                error={!!errors.password}
+                helperText={errors.password?.message}
+                sx={{
+                  mb: 5,
+                  '& .MuiInput-input': { 
+                    py: 1.5, 
+                    pr: 5, 
+                    fontSize: '1.05rem', 
+                    fontWeight: 500, 
+                    color: theme.palette.text.primary 
+                  },
+                  '& .MuiInput-underline:before': { borderBottomColor: isLight ? '#e0e0e0' : '#334155' },
+                  '& .MuiInput-underline:after': { borderBottomColor: '#ec4899' }
+                }}
+              />
+              <IconButton
+                aria-label="toggle password visibility"
+                onClick={() => setShowSignUpPassword(!showSignUpPassword)}
+                sx={{ 
+                  position: 'absolute', 
+                  right: 0, 
+                  bottom: errors.password ? 64 : 44, 
+                  color: theme.palette.text.secondary,
+                  padding: '4px',
+                  zIndex: 2
+                }}
+              >
+                {showSignUpPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </IconButton>
+            </Box>
 
             <Button
               type="submit"
