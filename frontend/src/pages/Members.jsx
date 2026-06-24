@@ -4,48 +4,104 @@ import { useForm } from 'react-hook-form';
 import { Plus, Edit2, Trash2, Eye, Landmark, Wallet, ChevronDown, ChevronUp, Search, X } from 'lucide-react';
 import api from '../api/axiosConfig';
 
+// Helper function to extract initials from a name
+const getInitials = (name) => {
+  if (!name) return 'M';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
+};
+
+// Helper function to generate a unique, vibrant gradient based on name hash
+const getAvatarGradient = (name) => {
+  const colors = [
+    'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)', // Soft Pink
+    'linear-gradient(135deg, #f6d365 0%, #fda085 100%)', // Sunny Peach
+    'linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)', // Soft Blue
+    'linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%)', // Mint Blue
+    'linear-gradient(135deg, #a6c0fe 0%, #f1eefc 100%)', // Lavender
+    'linear-gradient(135deg, #fccb90 0%, #d5d114 100%)', // Sand Gold
+    'linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%)', // Purple Blue
+    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', // Electric Blue
+    'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', // Neon Mint
+    'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', // Coral Sunset
+  ];
+  if (!name) return colors[0];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % colors.length;
+  return colors[index];
+};
+
 const MobileMemberRow = ({ member, handleViewDetails, handleEditClick, handleDeleteMember }) => {
   const [expanded, setExpanded] = useState(false);
+  const initials = getInitials(member.name);
+  const gradient = getAvatarGradient(member.name);
 
   return (
-    <Card sx={{ p: 2, mb: 1.5, borderRadius: 2, boxShadow: 1, border: '1px solid', borderColor: 'divider' }}>
+    <Card sx={{ p: 2, mb: 1.5, borderRadius: 2, boxShadow: 'none', border: '1px solid', borderColor: 'divider', backgroundColor: 'background.paper' }}>
       <Box 
         onClick={() => setExpanded(!expanded)} 
         sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
       >
-        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
-          {member.name}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          {/* Circular Initials Avatar */}
+          <Box sx={{
+            width: 38,
+            height: 38,
+            borderRadius: '50%',
+            background: gradient,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#ffffff',
+            fontWeight: 800,
+            fontSize: '0.95rem',
+            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.06)'
+          }}>
+            {initials}
+          </Box>
+          <Box>
+            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'text.primary', lineHeight: 1.2 }}>
+              {member.name}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {member.phone || 'No phone'}
+            </Typography>
+          </Box>
+        </Box>
         <IconButton size="small">
           {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
         </IconButton>
       </Box>
       <Collapse in={expanded} timeout="auto" unmountOnExit>
         <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
-          <Box>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>Phone Number</Typography>
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>{member.phone || '-'}</Typography>
-          </Box>
-          <Box>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>Physical Address</Typography>
-            <Typography variant="body2" sx={{ fontWeight: 500 }}>{member.address || '-'}</Typography>
-          </Box>
-          <Box>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>Joining Date</Typography>
-            <Typography variant="body2" sx={{ fontWeight: 500 }}>{member.joiningDate || '-'}</Typography>
-          </Box>
-          {member.nominee && (
+          <Box sx={{ p: 1.5, borderRadius: '8px', backgroundColor: (theme) => theme.palette.mode === 'light' ? 'rgba(0,0,0,0.01)' : 'rgba(255,255,255,0.02)', display: 'flex', flexDirection: 'column', gap: 1 }}>
             <Box>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>Nominee Name</Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>{member.nominee}</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>Physical Address</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>{member.address || '-'}</Typography>
             </Box>
-          )}
-          {member.guarantor && (
             <Box>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>Guarantor Name</Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>{member.guarantor}</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>Joining Date</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>{member.joiningDate || '-'}</Typography>
             </Box>
-          )}
+            {member.nominee && (
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>Nominee Name</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>{member.nominee}</Typography>
+              </Box>
+            )}
+            {member.guarantor && (
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>Guarantor Name</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>{member.guarantor}</Typography>
+              </Box>
+            )}
+          </Box>
           <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', mt: 1 }}>
             <Button 
               variant="outlined" 
@@ -53,7 +109,7 @@ const MobileMemberRow = ({ member, handleViewDetails, handleEditClick, handleDel
               startIcon={<Eye size={16} />} 
               onClick={() => handleViewDetails(member.id)}
               size="small"
-              sx={{ fontWeight: 'bold' }}
+              sx={{ fontWeight: 'bold', fontSize: '0.75rem', py: 0.8 }}
             >
               Portfolio
             </Button>
@@ -63,7 +119,7 @@ const MobileMemberRow = ({ member, handleViewDetails, handleEditClick, handleDel
               startIcon={<Edit2 size={16} />} 
               onClick={() => handleEditClick(member)}
               size="small"
-              sx={{ fontWeight: 'bold' }}
+              sx={{ fontWeight: 'bold', fontSize: '0.75rem', py: 0.8 }}
             >
               Edit
             </Button>
@@ -73,7 +129,7 @@ const MobileMemberRow = ({ member, handleViewDetails, handleEditClick, handleDel
               startIcon={<Trash2 size={16} />} 
               onClick={() => handleDeleteMember(member.id)}
               size="small"
-              sx={{ fontWeight: 'bold' }}
+              sx={{ fontWeight: 'bold', fontSize: '0.75rem', py: 0.8 }}
             >
               Delete
             </Button>
@@ -86,7 +142,7 @@ const MobileMemberRow = ({ member, handleViewDetails, handleEditClick, handleDel
 
 const Members = () => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -96,6 +152,7 @@ const Members = () => {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
 
   const { ref: nameRef, ...nameRegister } = register('name', { required: 'Name is required' });
@@ -207,6 +264,7 @@ const Members = () => {
 
   return (
     <Box>
+      {/* Directory Title Section */}
       <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 3 }}>
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>Members Directory</Typography>
         <Button variant="contained" startIcon={<Plus size={20} />} onClick={handleOpen} sx={{ width: { xs: '100%', sm: 'auto' } }}>
@@ -215,7 +273,7 @@ const Members = () => {
       </Box>
 
       {/* Search Bar */}
-      <Box sx={{ mb: 3 }}>
+      <Box sx={{ mb: 4 }}>
         <TextField
           fullWidth
           variant="outlined"
@@ -225,98 +283,123 @@ const Members = () => {
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
-                <Search size={20} color="#888" />
+                <Search size={18} color={theme.palette.text.secondary} />
               </InputAdornment>
             ),
+            endAdornment: searchQuery ? (
+              <InputAdornment position="end">
+                <IconButton size="small" onClick={() => setSearchQuery('')}>
+                  <X size={16} />
+                </IconButton>
+              </InputAdornment>
+            ) : null,
           }}
           size="small"
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              borderRadius: '8px',
+              backgroundColor: 'background.paper',
+              transition: 'all 0.2s ease-in-out',
+              '&.Mui-focused': {
+                boxShadow: `0 0 0 3px ${theme.palette.mode === 'light' ? 'rgba(99, 102, 241, 0.12)' : 'rgba(99, 102, 241, 0.25)'}`,
+              }
+            }
+          }}
         />
       </Box>
 
-      {/* Desktop Table View */}
-      <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-        <Card>
-          <Box sx={{ overflowX: 'auto' }}>
-            <Table>
-              <TableHead>
-                <TableRow sx={{ backgroundColor: 'background.default' }}>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Phone</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Address</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Joining Date</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 6 }}>
-                      <CircularProgress size={30} />
-                    </TableCell>
-                  </TableRow>
-                ) : members.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
-                      No members found. Add your first member!
-                    </TableCell>
-                  </TableRow>
-                ) : filteredMembers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
-                      No members match your search query.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredMembers.map((member) => (
-                    <TableRow key={member.id}>
-                      <TableCell>{member.name}</TableCell>
-                      <TableCell>{member.phone}</TableCell>
-                      <TableCell>{member.address}</TableCell>
-                      <TableCell>{member.joiningDate}</TableCell>
-                      <TableCell>
-                        <IconButton size="small" color="info" onClick={() => handleViewDetails(member.id)} title="View Portfolio"><Eye size={18} /></IconButton>
-                        <IconButton size="small" color="primary" onClick={() => handleEditClick(member)} title="Edit Member"><Edit2 size={18} /></IconButton>
-                        <IconButton size="small" color="error" onClick={() => handleDeleteMember(member.id)} title="Delete Member"><Trash2 size={18} /></IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </Box>
+      {/* Main Content Area */}
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+          <CircularProgress size={40} />
+        </Box>
+      ) : filteredMembers.length === 0 ? (
+        <Card sx={{ p: 5, textAlign: 'center', color: 'text.secondary', borderStyle: 'dashed', borderWidth: '2px', borderColor: 'divider' }}>
+          {members.length === 0 ? 'No members found. Add your first member to get started!' : 'No members match your search query.'}
         </Card>
-      </Box>
-
-      {/* Mobile Collapsible Card View */}
-      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-            <CircularProgress size={30} />
+      ) : (
+        <>
+          {/* DESKTOP VIEW (Classic Clean Table with Gradient Avatars) */}
+          <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+            <Card>
+              <Box sx={{ overflowX: 'auto' }}>
+                <Table>
+                  <TableHead>
+                    <TableRow sx={{ backgroundColor: 'background.default' }}>
+                      <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>Member</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Phone</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Address</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Joining Date</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold', pr: 3 }}>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {filteredMembers.map((member) => {
+                      const initials = getInitials(member.name);
+                      const gradient = getAvatarGradient(member.name);
+                      return (
+                        <TableRow key={member.id} sx={{ '&:hover': { backgroundColor: 'action.hover' } }}>
+                          <TableCell sx={{ pl: 3 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                              {/* Gradient Initials Profile Icon */}
+                              <Box sx={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: '50%',
+                                background: gradient,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#ffffff',
+                                fontWeight: 800,
+                                fontSize: '0.85rem',
+                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+                                border: '2px solid',
+                                borderColor: 'background.paper'
+                              }}>
+                                {initials}
+                              </Box>
+                              <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                                {member.name}
+                              </Typography>
+                            </Box>
+                          </TableCell>
+                          <TableCell>{member.phone}</TableCell>
+                          <TableCell sx={{ maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {member.address || '-'}
+                          </TableCell>
+                          <TableCell>{member.joiningDate}</TableCell>
+                          <TableCell sx={{ pr: 3 }}>
+                            <IconButton size="small" color="info" onClick={() => handleViewDetails(member.id)} title="View Portfolio"><Eye size={18} /></IconButton>
+                            <IconButton size="small" color="primary" onClick={() => handleEditClick(member)} title="Edit Member"><Edit2 size={18} /></IconButton>
+                            <IconButton size="small" color="error" onClick={() => handleDeleteMember(member.id)} title="Delete Member"><Trash2 size={18} /></IconButton>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </Box>
+            </Card>
           </Box>
-        ) : members.length === 0 ? (
-          <Card sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
-            No members found. Add your first member!
-          </Card>
-        ) : filteredMembers.length === 0 ? (
-          <Card sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
-            No members match your search query.
-          </Card>
-        ) : (
-          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-            {filteredMembers.map((member) => (
-              <MobileMemberRow
-                key={member.id}
-                member={member}
-                handleViewDetails={handleViewDetails}
-                handleEditClick={handleEditClick}
-                handleDeleteMember={handleDeleteMember}
-              />
-            ))}
-          </Box>
-        )}
-      </Box>
 
-      {/* Add Member Modal */}
+          {/* MOBILE VIEW (Vibrant Collapsible Cards View) */}
+          <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+              {filteredMembers.map((member) => (
+                <MobileMemberRow
+                  key={member.id}
+                  member={member}
+                  handleViewDetails={handleViewDetails}
+                  handleEditClick={handleEditClick}
+                  handleDeleteMember={handleDeleteMember}
+                />
+              ))}
+            </Box>
+          </Box>
+        </>
+      )}
+
       {/* Add Member Modal */}
       <Dialog 
         open={open} 
@@ -572,47 +655,85 @@ const Members = () => {
                 <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Wallet size={18} style={{ color: '#4f46e5' }} /> Chit Group Memberships ({selectedMemberDetails.chits.length})
                 </Typography>
-                <Card sx={{ p: 0 }}>
-                  <Box sx={{ overflowX: 'auto', width: '100%' }}>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow sx={{ backgroundColor: 'action.hover' }}>
-                          <TableCell sx={{ fontWeight: 'bold' }}>Chit Group</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold' }}>Total Value</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold' }}>Duration</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold' }}>Start Month</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {selectedMemberDetails.chits.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={5} align="center" sx={{ py: 3, color: 'text.secondary', fontStyle: 'italic' }}>
-                              Not assigned to any chit groups yet.
-                            </TableCell>
+                {isMobile ? (
+                  selectedMemberDetails.chits.length === 0 ? (
+                    <Card sx={{ p: 3, textAlign: 'center', color: 'text.secondary', fontStyle: 'italic', borderRadius: 2, border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
+                      Not assigned to any chit groups yet.
+                    </Card>
+                  ) : (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      {selectedMemberDetails.chits.map(chit => (
+                        <Card key={chit.id} sx={{ p: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider', boxShadow: 'none', backgroundColor: 'background.paper' }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary' }}>{chit.name}</Typography>
+                            <Chip 
+                              label={chit.status} 
+                              color={chit.status === 'ACTIVE' ? 'success' : 'default'} 
+                              size="small" 
+                              sx={{ fontSize: '0.65rem', fontWeight: 'bold', height: 18 }}
+                            />
+                          </Box>
+                          <Grid container spacing={1}>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>Total Value</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>₹{chit.totalAmount?.toLocaleString()}</Typography>
+                            </Grid>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>Duration</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>{chit.durationMonths} months</Typography>
+                            </Grid>
+                            <Grid item xs={12}>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>Start Month</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>{chit.startMonth}</Typography>
+                            </Grid>
+                          </Grid>
+                        </Card>
+                      ))}
+                    </Box>
+                  )
+                ) : (
+                  <Card sx={{ p: 0 }}>
+                    <Box sx={{ overflowX: 'auto', width: '100%' }}>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow sx={{ backgroundColor: 'action.hover' }}>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Chit Group</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Total Value</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Duration</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Start Month</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
                           </TableRow>
-                        ) : (
-                          selectedMemberDetails.chits.map(chit => (
-                            <TableRow key={chit.id} hover>
-                              <TableCell sx={{ fontWeight: 'bold' }}>{chit.name}</TableCell>
-                              <TableCell>₹{chit.totalAmount?.toLocaleString()}</TableCell>
-                              <TableCell>{chit.durationMonths} months</TableCell>
-                              <TableCell>{chit.startMonth}</TableCell>
-                              <TableCell>
-                                <Chip 
-                                  label={chit.status} 
-                                  color={chit.status === 'ACTIVE' ? 'success' : 'default'} 
-                                  size="small" 
-                                  sx={{ fontSize: '0.7rem', fontWeight: 'bold', height: 20 }}
-                                />
+                        </TableHead>
+                        <TableBody>
+                          {selectedMemberDetails.chits.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={5} align="center" sx={{ py: 3, color: 'text.secondary', fontStyle: 'italic' }}>
+                                Not assigned to any chit groups yet.
                               </TableCell>
                             </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </Box>
-                </Card>
+                          ) : (
+                            selectedMemberDetails.chits.map(chit => (
+                              <TableRow key={chit.id} hover>
+                                <TableCell sx={{ fontWeight: 'bold' }}>{chit.name}</TableCell>
+                                <TableCell>₹{chit.totalAmount?.toLocaleString()}</TableCell>
+                                <TableCell>{chit.durationMonths} months</TableCell>
+                                <TableCell>{chit.startMonth}</TableCell>
+                                <TableCell>
+                                  <Chip 
+                                    label={chit.status} 
+                                    color={chit.status === 'ACTIVE' ? 'success' : 'default'} 
+                                    size="small" 
+                                    sx={{ fontSize: '0.7rem', fontWeight: 'bold', height: 20 }}
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </Box>
+                  </Card>
+                )}
               </Box>
 
               {/* Loans Issued */}
@@ -620,61 +741,123 @@ const Members = () => {
                 <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Landmark size={18} style={{ color: '#10b981' }} /> Loans Issued Portfolio ({selectedMemberDetails.loans.length})
                 </Typography>
-                <Card sx={{ p: 0 }}>
-                  <Box sx={{ overflowX: 'auto', width: '100%' }}>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow sx={{ backgroundColor: 'action.hover' }}>
-                          <TableCell sx={{ fontWeight: 'bold' }}>Principal</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold' }}>Interest Rate</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold' }}>Interest Type</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold' }}>Start Date</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold' }}>End Date</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold' }}>Interest Collected</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {selectedMemberDetails.loans.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={7} align="center" sx={{ py: 3, color: 'text.secondary', fontStyle: 'italic' }}>
-                              No loans issued to this member yet.
-                            </TableCell>
+                {isMobile ? (
+                  selectedMemberDetails.loans.length === 0 ? (
+                    <Card sx={{ p: 3, textAlign: 'center', color: 'text.secondary', fontStyle: 'italic', borderRadius: 2, border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
+                      No loans issued to this member yet.
+                    </Card>
+                  ) : (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      {selectedMemberDetails.loans.map(loan => (
+                        <Card key={loan.id} sx={{ p: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider', boxShadow: 'none', backgroundColor: 'background.paper' }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                            <Box>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>Principal Amount</Typography>
+                              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
+                                ₹{loan.amount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                              </Typography>
+                            </Box>
+                            <Chip 
+                              label={loan.status} 
+                              color={loan.status === 'ACTIVE' ? 'primary' : 'success'} 
+                              size="small" 
+                              sx={{ fontSize: '0.65rem', fontWeight: 'bold', height: 18 }}
+                            />
+                          </Box>
+                          <Grid container spacing={1.5}>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>Interest Rate</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>{loan.interestRate}% / month</Typography>
+                            </Grid>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>Interest Type</Typography>
+                              <Chip 
+                                label={loan.interestType === 'MONTHLY' ? 'Monthly' : 'Accumulated'} 
+                                size="small" 
+                                variant="outlined"
+                                color={loan.interestType === 'MONTHLY' ? 'secondary' : 'default'}
+                                sx={{ fontSize: '0.6rem', height: 18, fontWeight: 'bold', mt: 0.2 }}
+                              />
+                            </Grid>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>Start Date</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>{loan.startDate}</Typography>
+                            </Grid>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>End Date</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>{loan.endDate || '-'}</Typography>
+                            </Grid>
+                            <Grid item xs={12}>
+                              <Divider sx={{ my: 0.5 }} />
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Typography variant="caption" color="text.secondary">Interest Collected</Typography>
+                                <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 'bold' }}>
+                                  ₹{loan.collectedInterest?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </Typography>
+                              </Box>
+                            </Grid>
+                          </Grid>
+                        </Card>
+                      ))}
+                    </Box>
+                  )
+                ) : (
+                  <Card sx={{ p: 0 }}>
+                    <Box sx={{ overflowX: 'auto', width: '100%' }}>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow sx={{ backgroundColor: 'action.hover' }}>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Principal</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Interest Rate</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Interest Type</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Start Date</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>End Date</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Interest Collected</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
                           </TableRow>
-                        ) : (
-                          selectedMemberDetails.loans.map(loan => (
-                            <TableRow key={loan.id} hover>
-                              <TableCell sx={{ fontWeight: 'bold' }}>₹{loan.amount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
-                              <TableCell>{loan.interestRate}% / month</TableCell>
-                              <TableCell>
-                                <Chip 
-                                  label={loan.interestType === 'MONTHLY' ? 'Monthly' : 'Accumulated'} 
-                                  size="small" 
-                                  variant="outlined"
-                                  color={loan.interestType === 'MONTHLY' ? 'secondary' : 'default'}
-                                  sx={{ fontSize: '0.65rem', height: 18, fontWeight: 'bold' }}
-                                />
-                              </TableCell>
-                              <TableCell>{loan.startDate}</TableCell>
-                              <TableCell>{loan.endDate || '-'}</TableCell>
-                              <TableCell sx={{ color: 'success.main', fontWeight: 'bold' }}>
-                                ₹{loan.collectedInterest?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                              </TableCell>
-                              <TableCell>
-                                <Chip 
-                                  label={loan.status} 
-                                  color={loan.status === 'ACTIVE' ? 'primary' : 'success'} 
-                                  size="small" 
-                                  sx={{ fontSize: '0.7rem', fontWeight: 'bold', height: 20 }}
-                                />
+                        </TableHead>
+                        <TableBody>
+                          {selectedMemberDetails.loans.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={7} align="center" sx={{ py: 3, color: 'text.secondary', fontStyle: 'italic' }}>
+                                No loans issued to this member yet.
                               </TableCell>
                             </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </Box>
-                </Card>
+                          ) : (
+                            selectedMemberDetails.loans.map(loan => (
+                              <TableRow key={loan.id} hover>
+                                <TableCell sx={{ fontWeight: 'bold' }}>₹{loan.amount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                                <TableCell>{loan.interestRate}% / month</TableCell>
+                                <TableCell>
+                                  <Chip 
+                                    label={loan.interestType === 'MONTHLY' ? 'Monthly' : 'Accumulated'} 
+                                    size="small" 
+                                    variant="outlined"
+                                    color={loan.interestType === 'MONTHLY' ? 'secondary' : 'default'}
+                                    sx={{ fontSize: '0.65rem', height: 18, fontWeight: 'bold' }}
+                                  />
+                                </TableCell>
+                                <TableCell>{loan.startDate}</TableCell>
+                                <TableCell>{loan.endDate || '-'}</TableCell>
+                                <TableCell sx={{ color: 'success.main', fontWeight: 'bold' }}>
+                                  ₹{loan.collectedInterest?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </TableCell>
+                                <TableCell>
+                                  <Chip 
+                                    label={loan.status} 
+                                    color={loan.status === 'ACTIVE' ? 'primary' : 'success'} 
+                                    size="small" 
+                                    sx={{ fontSize: '0.7rem', fontWeight: 'bold', height: 20 }}
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </Box>
+                  </Card>
+                )}
               </Box>
             </Box>
           )}

@@ -1,27 +1,96 @@
 import React, { useEffect, useState } from 'react';
-import { Grid, Card, CardContent, Typography, Box, CircularProgress, useTheme, Table, TableBody, TableCell, TableHead, TableRow, Chip, Button, Alert } from '@mui/material';
+import { Grid, Card, CardContent, Typography, Box, CircularProgress, useTheme, Table, TableBody, TableCell, TableHead, TableRow, Chip, Button, Alert, LinearProgress } from '@mui/material';
 import { Users, Wallet, TrendingUp, AlertCircle } from 'lucide-react';
 import api from '../api/axiosConfig';
 
-const StatCard = ({ title, value, icon, color }) => (
-  <Card sx={{ width: '100%', height: '100%', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-2px)' } }}>
-    <CardContent>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <Box>
-          <Typography color="text.secondary" variant="subtitle2" sx={{ fontWeight: 500 }} gutterBottom>
-            {title}
-          </Typography>
-          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-            {value}
-          </Typography>
+const StatCard = ({ title, value, icon, color }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
+  
+  return (
+    <Card 
+      sx={{ 
+        width: '100%', 
+        height: '100%', 
+        position: 'relative',
+        overflow: 'hidden',
+        background: isDark 
+          ? `linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(30, 41, 59, 0.4) 100%)`
+          : `linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)`,
+        border: '1px solid',
+        borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(226, 232, 240, 0.8)',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '4px',
+          height: '100%',
+          backgroundColor: color,
+        },
+        '&:hover': {
+          transform: 'translateY(-4px)',
+          boxShadow: isDark 
+            ? `0 20px 25px -5px ${color}15, 0 10px 10px -5px ${color}10`
+            : `0 20px 25px -5px ${color}10, 0 10px 10px -5px ${color}05`,
+          borderColor: `${color}40`,
+        }
+      }}
+    >
+      <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography 
+              color="text.secondary" 
+              variant="caption" 
+              sx={{ 
+                fontWeight: 700, 
+                textTransform: 'uppercase', 
+                letterSpacing: '0.05em',
+                display: 'block',
+                mb: 0.5
+              }}
+            >
+              {title}
+            </Typography>
+            <Typography 
+              variant="h4" 
+              sx={{ 
+                fontWeight: 800, 
+                color: 'text.primary',
+                letterSpacing: '-0.02em',
+                fontFamily: '"Outfit", sans-serif'
+              }}
+            >
+              {value}
+            </Typography>
+          </Box>
+          <Box 
+            sx={{ 
+              p: 1.75, 
+              borderRadius: '12px', 
+              backgroundColor: isDark ? `${color}18` : `${color}10`, 
+              color: color,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: `0 8px 16px -4px ${color}20`,
+              border: '1px solid',
+              borderColor: isDark ? `${color}30` : `${color}15`,
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'scale(1.05) rotate(5deg)',
+                boxShadow: `0 12px 20px -4px ${color}30`,
+              }
+            }}
+          >
+            {icon}
+          </Box>
         </Box>
-        <Box sx={{ p: 1.5, borderRadius: 2, backgroundColor: `${color}15`, color: color }}>
-          {icon}
-        </Box>
-      </Box>
-    </CardContent>
-  </Card>
-);
+      </CardContent>
+    </Card>
+  );
+};
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
@@ -119,7 +188,7 @@ const Dashboard = () => {
         </Grid>
         <Grid item xs={12} sm={12} md={3} sx={{ width: { xs: '100%', md: 'auto' } }}>
           <StatCard
-            title="Pending Collections (Current Month)"
+            title="Pending Collections"
             value={stats?.pendingCollections || 0}
             icon={<AlertCircle size={20} />}
             color="#ef4444"
@@ -127,7 +196,7 @@ const Dashboard = () => {
         </Grid>
       </Grid>
 
-      {/* Chit-wise Pending Collections Table */}
+      {/* Chit-wise Outstanding Collections Table */}
       <Card>
         <CardContent sx={{ p: 0 }}>
           <Box sx={{ p: 3, borderBottom: '1px solid', borderColor: 'divider' }}>
@@ -147,7 +216,7 @@ const Dashboard = () => {
                   <TableCell sx={{ fontWeight: 'bold' }}>Current Month</TableCell>
                   <TableCell sx={{ fontWeight: 'bold' }}>Monthly Contribution</TableCell>
                   <TableCell sx={{ fontWeight: 'bold' }}>Collection Progress</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Pending Members</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
                   <TableCell sx={{ fontWeight: 'bold', pr: 3 }}>Pending Amount</TableCell>
                 </TableRow>
               </TableHead>
@@ -161,9 +230,10 @@ const Dashboard = () => {
                 ) : (
                   stats.activeChitsCollectionDetails.map((details) => {
                     const isFullyPaid = details.pendingMembersCount === 0;
+                    const percent = details.totalMembers > 0 ? (details.paidMembersCount / details.totalMembers) * 100 : 0;
 
                     return (
-                      <TableRow key={details.chitId} sx={{ '&:hover': { backgroundColor: 'action.hover' } }}>
+                      <TableRow key={details.chitId}>
                         <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>{details.chitName}</TableCell>
                         <TableCell>
                           <Chip 
@@ -176,11 +246,30 @@ const Dashboard = () => {
                         </TableCell>
                         <TableCell>₹{details.monthlyCollection?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
                         <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                              {details.paidMembersCount} / {details.totalMembers}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">Paid</Typography>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, minWidth: 140, maxWidth: 200 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                                {details.paidMembersCount} / {details.totalMembers}
+                              </Typography>
+                              <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                                {Math.round(percent)}% Paid
+                              </Typography>
+                            </Box>
+                            <LinearProgress 
+                              variant="determinate" 
+                              value={percent} 
+                              sx={{ 
+                                height: 6, 
+                                borderRadius: 3, 
+                                backgroundColor: (theme) => theme.palette.mode === 'light' ? '#e2e8f0' : '#334155',
+                                '& .MuiLinearProgress-bar': {
+                                  borderRadius: 3,
+                                  background: percent === 100 
+                                    ? 'linear-gradient(90deg, #10b981 0%, #34d399 100%)'
+                                    : 'linear-gradient(90deg, #4338ca 0%, #6366f1 100%)',
+                                }
+                              }}
+                            />
                           </Box>
                         </TableCell>
                         <TableCell>
@@ -212,6 +301,8 @@ const Dashboard = () => {
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {stats.activeChitsCollectionDetails.map((details) => {
                   const isFullyPaid = details.pendingMembersCount === 0;
+                  const percent = details.totalMembers > 0 ? (details.paidMembersCount / details.totalMembers) * 100 : 0;
+                  
                   return (
                     <Card key={details.chitId} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
@@ -226,19 +317,38 @@ const Dashboard = () => {
                           sx={{ fontWeight: 'bold' }}
                         />
                       </Box>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                           <Typography variant="body2" color="text.secondary">Monthly Contribution</Typography>
                           <Typography variant="body2" sx={{ fontWeight: 500 }}>
                             ₹{details.monthlyCollection?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                           </Typography>
                         </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="body2" color="text.secondary">Collection Progress</Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                            {details.paidMembersCount} / {details.totalMembers} Paid
-                          </Typography>
+                        
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography variant="body2" color="text.secondary">Collection Progress</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                              {details.paidMembersCount} / {details.totalMembers} ({Math.round(percent)}%)
+                            </Typography>
+                          </Box>
+                          <LinearProgress 
+                            variant="determinate" 
+                            value={percent} 
+                            sx={{ 
+                              height: 6, 
+                              borderRadius: 3, 
+                              backgroundColor: (theme) => theme.palette.mode === 'light' ? '#e2e8f0' : '#334155',
+                              '& .MuiLinearProgress-bar': {
+                                borderRadius: 3,
+                                background: percent === 100 
+                                  ? 'linear-gradient(90deg, #10b981 0%, #34d399 100%)'
+                                  : 'linear-gradient(90deg, #4338ca 0%, #6366f1 100%)',
+                              }
+                            }}
+                          />
                         </Box>
+
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <Typography variant="body2" color="text.secondary">Status</Typography>
                           <Chip 

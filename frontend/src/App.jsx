@@ -6,9 +6,11 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Members from './pages/Members';
 import Chits from './pages/Chits';
+import ChitDetails from './pages/ChitDetails';
 import Collections from './pages/Collections';
 import Payouts from './pages/Payouts';
 import Loans from './pages/Loans';
+import Settings from './pages/Settings';
 import Layout from './components/Layout';
 import { useAuthStore, useThemeStore } from './store';
 
@@ -101,9 +103,11 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="members" element={<Members />} />
             <Route path="chits" element={<Chits />} />
+            <Route path="chits/:id" element={<ChitDetails />} />
             <Route path="collections" element={<Collections />} />
             <Route path="payouts" element={<Payouts />} />
             <Route path="loans" element={<Loans />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>
       </Router>

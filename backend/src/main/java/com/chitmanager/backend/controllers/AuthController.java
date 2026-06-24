@@ -87,4 +87,51 @@ public class AuthController {
                 "username", tenant.getUsername()
         ));
     }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@RequestBody Map<String, String> request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal().equals("anonymousUser")) {
+            return ResponseEntity.status(401).body(Map.of("message", "Error: Unauthorized! Please log in first."));
+        }
+
+        String currentPassword = request.get("currentPassword");
+        String newPassword = request.get("newPassword");
+
+        if (currentPassword == null || newPassword == null || currentPassword.isBlank() || newPassword.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Error: Current password and new password are required."));
+        }
+
+        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        Tenant tenant = tenantRepository.findById(userDetails.getId())
+                .orElseThrow(() -> new RuntimeException("Error: Tenant user not found."));
+
+        if (!encoder.matches(currentPassword, tenant.getPassword())) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Error: Incorrect current password."));
+        }
+
+        tenant.setPassword(encoder.encode(newPassword));
+        tenantRepository.save(tenant);
+
+        return ResponseEntity.ok(Map.of("message", "Password changed successfully!"));
+    }
+
+    @GetMapping("/profile")
+    public ResponseEntity<?> getProfile() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal().equals("anonymousUser")) {
+            return ResponseEntity.status(401).body(Map.of("message", "Error: Unauthorized! Please log in first."));
+        }
+
+        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        Tenant tenant = tenantRepository.findById(userDetails.getId())
+                .orElseThrow(() -> new RuntimeException("Error: Tenant user not found."));
+
+        return ResponseEntity.ok(Map.of(
+                "username", tenant.getUsername(),
+                "tenantId", tenant.getTenantId(),
+                "role", tenant.getRole().name(),
+                "createdAt", tenant.getCreatedAt() != null ? tenant.getCreatedAt().toString() : ""
+        ));
+    }
 }

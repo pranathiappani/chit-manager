@@ -1,341 +1,147 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Card, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Grid, IconButton, FormControl, InputLabel, Select, MenuItem, CircularProgress, Collapse, useMediaQuery, useTheme, InputAdornment } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { Box, Card, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Grid, IconButton, FormControl, InputLabel, Select, MenuItem, CircularProgress, useMediaQuery, useTheme } from '@mui/material';
 import { useForm, useWatch, Controller } from 'react-hook-form';
-import { Plus, UserPlus, Settings2, Trash2, Users, Clock, ChevronDown, ChevronUp, Receipt, Search, X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import api from '../api/axiosConfig';
-const ChitRow = ({ chit, handleViewMembers, handlePendingDuesOpen, handleAssignOpen, handlePlanOpen, handleDeleteChit, handleLedgerOpen }) => {
-  const [open, setOpen] = useState(false);
+
+// Helper function to extract initials from a name
+const getInitials = (name) => {
+  if (!name) return 'CG';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
+};
+
+// Helper function to generate a unique gradient based on name hash
+const getAvatarGradient = (name) => {
+  const colors = [
+    'linear-gradient(135deg, #4338ca 0%, #6366f1 100%)', // Indigo
+    'linear-gradient(135deg, #059669 0%, #10b981 100%)', // Emerald
+    'linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)', // Sky Blue
+    'linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%)', // Violet
+    'linear-gradient(135deg, #db2777 0%, #f472b6 100%)', // Pink
+    'linear-gradient(135deg, #ea580c 0%, #fb923c 100%)', // Orange
+    'linear-gradient(135deg, #2563eb 0%, #60a5fa 100%)', // Blue
+  ];
+  if (!name) return colors[0];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % colors.length;
+  return colors[index];
+};
+
+const ChitRow = ({ chit, onClick }) => {
+  const initials = getInitials(chit.name);
+  const gradient = getAvatarGradient(chit.name);
 
   return (
-    <React.Fragment>
-      <TableRow hover onClick={() => setOpen(!open)} sx={{ cursor: 'pointer', '& > *': { borderBottom: 'unset' } }}>
-        <TableCell sx={{ width: 50 }}>
-          <IconButton size="small" onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>
-            {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-          </IconButton>
-        </TableCell>
-        <TableCell sx={{ fontWeight: 500 }}>{chit.name}</TableCell>
-        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>₹{chit.totalAmount.toLocaleString()}</TableCell>
-        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{chit.durationMonths} months</TableCell>
-        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
-          <Chip 
-            label={`${chit.assignedMemberCount || 0} / ${chit.memberCount} Assigned`}
-            color={chit.assignedMemberCount === chit.memberCount ? 'success' : 'warning'}
-            variant="outlined"
-            size="small"
-            sx={{ fontWeight: 'bold' }}
-            onClick={(e) => e.stopPropagation()}
-          />
-        </TableCell>
-        <TableCell>
-          <Chip 
-            label={chit.status} 
-            color={chit.status === 'ACTIVE' ? 'success' : 'default'} 
-            size="small" 
-            onClick={(e) => e.stopPropagation()}
-          />
-        </TableCell>
-      </TableRow>
-      <TableRow>
-        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
-          <Collapse in={open} timeout="auto" unmountOnExit>
-            <Box sx={{ margin: 2, p: 2, borderRadius: 2, backgroundColor: 'action.hover', border: '1px solid', borderColor: 'divider' }}>
-              {/* Mobile-only summary details */}
-              <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 1.5, mb: 2.5, pb: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>Chit Details</Typography>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2" color="text.secondary">Total Amount</Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>₹{chit.totalAmount.toLocaleString()}</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2" color="text.secondary">Duration</Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>{chit.durationMonths} months</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="body2" color="text.secondary">Assigned Members</Typography>
-                  <Chip 
-                    label={`${chit.assignedMemberCount || 0} / ${chit.memberCount} Assigned`}
-                    color={chit.assignedMemberCount === chit.memberCount ? 'success' : 'warning'}
-                    variant="outlined"
-                    size="small"
-                    sx={{ fontWeight: 'bold' }}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </Box>
-              </Box>
+    <TableRow hover onClick={onClick} sx={{ cursor: 'pointer' }}>
+      <TableCell sx={{ fontWeight: 700, color: 'text.primary', pl: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {/* Custom Initials Branding Badge */}
+          <Box sx={{
+            width: 38,
+            height: 38,
+            borderRadius: '8px',
+            background: gradient,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#ffffff',
+            fontWeight: 800,
+            fontSize: '0.9rem',
+            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.05)',
+            border: '2px solid',
+            borderColor: 'background.paper'
+          }}>
+            {initials}
+          </Box>
+          <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.primary' }}>
+            {chit.name}
+          </Typography>
+        </Box>
+      </TableCell>
+      <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, fontWeight: 600 }}>
+        ₹{chit.totalAmount.toLocaleString()}
+      </TableCell>
+      <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, color: 'text.secondary', fontWeight: 500 }}>
+        {chit.durationMonths} months
+      </TableCell>
+      <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+        <Chip 
+          label={`${chit.assignedMemberCount || 0} / ${chit.memberCount} Assigned`}
+          color={chit.assignedMemberCount === chit.memberCount ? 'success' : 'warning'}
+          variant="outlined"
+          size="small"
+          sx={{ fontWeight: 700, fontSize: '0.75rem' }}
+        />
+      </TableCell>
+      <TableCell sx={{ pr: 3 }}>
+        <Chip 
+          label={chit.status} 
+          color={chit.status === 'ACTIVE' ? 'success' : 'default'} 
+          size="small" 
+          sx={{ fontWeight: 700, fontSize: '0.72rem', height: 22 }}
+        />
+      </TableCell>
+    </TableRow>
+  );
+};
 
-              <Typography variant="subtitle2" gutterBottom component="div" sx={{ fontWeight: 'bold', mb: 1.5 }}>
-                Group Actions & Management
+const MobileChitRow = ({ chit, onClick }) => {
+  const initials = getInitials(chit.name);
+  const gradient = getAvatarGradient(chit.name);
+
+  return (
+    <Card sx={{ p: 2, mb: 1.5, borderRadius: 2, boxShadow: 'none', border: '1px solid', borderColor: 'divider', backgroundColor: 'background.paper', cursor: 'pointer' }} onClick={onClick}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: 0, gap: 1.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
+          {/* Avatar branding badge */}
+          <Box sx={{
+            width: 38,
+            height: 38,
+            borderRadius: '8px',
+            background: gradient,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#ffffff',
+            fontWeight: 800,
+            fontSize: '0.9rem',
+            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.05)',
+            border: '2px solid',
+            borderColor: 'background.paper',
+            flexShrink: 0
+          }}>
+            {initials}
+          </Box>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'text.primary', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {chit.name}
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 0.3, flexWrap: 'wrap' }}>
+              <Typography variant="caption" color="text.secondary">
+                ₹{chit.totalAmount.toLocaleString()} • {chit.durationMonths}m
               </Typography>
-              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, flexWrap: 'wrap', width: '100%' }}>
-                <Button 
-                  variant="outlined" 
-                  color="info" 
-                  startIcon={<Users size={16} />} 
-                  onClick={(e) => { e.stopPropagation(); handleViewMembers(chit); }}
-                  size="small"
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
-                >
-                  View Members
-                </Button>
-                <Button 
-                  variant="outlined" 
-                  color="warning" 
-                  startIcon={<Clock size={16} />} 
-                  onClick={(e) => { e.stopPropagation(); handlePendingDuesOpen(chit); }}
-                  size="small"
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
-                >
-                  Pending Dues
-                </Button>
-                <Button 
-                  variant="outlined" 
-                  color="primary" 
-                  startIcon={<UserPlus size={16} />} 
-                  onClick={(e) => { e.stopPropagation(); handleAssignOpen(chit.id); }}
-                  size="small"
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
-                >
-                  Assign Member
-                </Button>
-                <Button 
-                  variant="outlined" 
-                  color="secondary" 
-                  startIcon={<Settings2 size={16} />} 
-                  onClick={(e) => { e.stopPropagation(); handlePlanOpen(chit); }}
-                  size="small"
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
-                >
-                  Payout Plans
-                </Button>
-                <Button 
-                  variant="outlined" 
-                  color="success" 
-                  startIcon={<Receipt size={16} />} 
-                  onClick={(e) => { e.stopPropagation(); handleLedgerOpen(chit); }}
-                  size="small"
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
-                >
-                  Chit Ledger
-                </Button>
-                <Button 
-                  variant="outlined" 
-                  color="error" 
-                  startIcon={<Trash2 size={16} />} 
-                  onClick={(e) => { e.stopPropagation(); handleDeleteChit(chit.id); }}
-                  size="small"
-                  sx={{ width: { xs: '100%', sm: 'auto' }, ml: { xs: 0, sm: 'auto' } }}
-                >
-                  Delete Chit Group
-                </Button>
-              </Box>
-            </Box>
-          </Collapse>
-        </TableCell>
-      </TableRow>
-    </React.Fragment>
-  );
-};
-
-const MobilePendingMemberCard = ({ groupedMember, selectedDues, pendingDuesData, handlePastDuesToggle, handleCheckboxChange }) => {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <Card sx={{ p: 2, mb: 1.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', boxShadow: 'none', backgroundColor: 'background.paper' }}>
-      <Box 
-        onClick={() => setExpanded(!expanded)} 
-        sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-      >
-        <Box>
-          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
-            {groupedMember.memberName}
-          </Typography>
-          {groupedMember.slots.length > 1 && (
-            <Typography variant="caption" color="text.secondary" display="block">
-              ({groupedMember.slots.length} spots)
-            </Typography>
-          )}
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'error.main' }}>
-            ₹{groupedMember.totalPending?.toLocaleString()}
-          </Typography>
-          <IconButton size="small">
-            {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </IconButton>
-        </Box>
-      </Box>
-      <Collapse in={expanded} timeout="auto" unmountOnExit>
-        <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid', borderColor: 'divider', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          <Box>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2 }}>Phone Number</Typography>
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>{groupedMember.memberPhone || '-'}</Typography>
-          </Box>
-          <Box>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>Pending Dues By Month</Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-              {groupedMember.slots.map((slot, sIdx) => {
-                const label = groupedMember.slots.length > 1 ? `Spot #${sIdx + 1}: ` : '';
-                const currentMonthNum = pendingDuesData.currentMonth;
-                const pastPending = slot.pendingMonths.filter(pm => pm.monthNumber < currentMonthNum);
-                const currentOrFuturePending = slot.pendingMonths.filter(pm => pm.monthNumber >= currentMonthNum);
-                
-                const pastTotal = pastPending.reduce((sum, pm) => sum + pm.amountDue, 0);
-                const isPastChecked = pastPending.length > 0 && pastPending.every(pm => !!selectedDues[`${slot.chitMemberId}-${pm.monthNumber}`]);
-                
-                return (
-                  <Box key={slot.chitMemberId} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                    {label && <Typography variant="caption" sx={{ fontWeight: 'bold' }}>{label}</Typography>}
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                      {pastPending.length > 0 && (
-                        <Chip
-                          label={`Past Dues: ₹${pastTotal.toLocaleString()}`}
-                          color={isPastChecked ? "primary" : "default"}
-                          variant={isPastChecked ? "contained" : "outlined"}
-                          onClick={() => handlePastDuesToggle(slot.chitMemberId, pastPending, isPastChecked, groupedMember.memberId)}
-                          sx={{ cursor: 'pointer', fontSize: '0.8rem' }}
-                        />
-                      )}
-                      {currentOrFuturePending.map(pm => {
-                        const key = `${slot.chitMemberId}-${pm.monthNumber}`;
-                        const isChecked = !!selectedDues[key];
-                        return (
-                          <Chip
-                            key={pm.monthNumber}
-                            label={`M${pm.monthNumber}: ₹${pm.amountDue.toLocaleString()}`}
-                            color={isChecked ? "primary" : "default"}
-                            variant={isChecked ? "contained" : "outlined"}
-                            onClick={() => handleCheckboxChange(slot.chitMemberId, pm.monthNumber, pm.amountDue, groupedMember.memberId)}
-                            sx={{ cursor: 'pointer', fontSize: '0.8rem' }}
-                          />
-                        );
-                      })}
-                    </Box>
-                  </Box>
-                );
-              })}
+              <Box sx={{ width: 4, height: 4, borderRadius: '50%', backgroundColor: 'text.secondary', flexShrink: 0 }} />
+              <Typography variant="caption" color={chit.assignedMemberCount === chit.memberCount ? 'success.main' : 'warning.main'} sx={{ fontWeight: 700 }}>
+                {chit.assignedMemberCount || 0}/{chit.memberCount} Members
+              </Typography>
             </Box>
           </Box>
         </Box>
-      </Collapse>
-    </Card>
-  );
-};
-
-const MobileLedgerRow = ({ memberGroup }) => {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <Card sx={{ p: 2, mb: 1.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', boxShadow: 'none', backgroundColor: 'background.paper' }}>
-      <Box 
-        onClick={() => setExpanded(!expanded)} 
-        sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-      >
-        <Box>
-          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
-            {memberGroup.memberName}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {memberGroup.payments.length} transaction{memberGroup.payments.length > 1 ? 's' : ''}
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'success.main' }}>
-            ₹{memberGroup.totalPaid?.toLocaleString()}
-          </Typography>
-          <IconButton size="small">
-            {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </IconButton>
-        </Box>
+        <Chip 
+          label={chit.status} 
+          color={chit.status === 'ACTIVE' ? 'success' : 'default'} 
+          size="small" 
+          sx={{ fontWeight: 700, fontSize: '0.65rem', height: 18, flexShrink: 0 }}
+        />
       </Box>
-      <Collapse in={expanded} timeout="auto" unmountOnExit>
-        <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid', borderColor: 'divider', display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {memberGroup.payments.map((payment, idx) => (
-            <Box key={idx} sx={{ pb: idx < memberGroup.payments.length - 1 ? 2 : 0, borderBottom: idx < memberGroup.payments.length - 1 ? '1px dashed' : 'none', borderColor: 'divider' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                  Date: {payment.paymentDate || '-'}
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'success.main' }}>
-                  ₹{payment.totalAmountPaid.toLocaleString()}
-                </Typography>
-              </Box>
-              <Box sx={{ mb: 1 }}>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>Cleared Months</Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                  {payment.clearedMonths.sort((a, b) => a - b).map(m => (
-                    <Chip
-                      key={m}
-                      label={`Month ${m}`}
-                      size="small"
-                      color="secondary"
-                      variant="outlined"
-                      sx={{ fontSize: '0.75rem', height: 20 }}
-                    />
-                  ))}
-                </Box>
-              </Box>
-              <Box>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Remarks</Typography>
-                <Typography variant="body2" sx={{ fontWeight: 500 }}>{payment.remarks || '-'}</Typography>
-              </Box>
-            </Box>
-          ))}
-        </Box>
-      </Collapse>
-    </Card>
-  );
-};
-
-const MobilePayoutPlanCard = ({ plan, index, handlePlanChange }) => {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <Card sx={{ p: 2, mb: 1.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', boxShadow: 'none', backgroundColor: 'background.paper' }}>
-      <Box 
-        onClick={() => setExpanded(!expanded)} 
-        sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-      >
-        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
-          Month {plan.monthNumber}
-        </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {plan.payoutAmount ? (
-            <Typography variant="caption" sx={{ fontWeight: 600, color: 'primary.main' }}>
-              ₹{Number(plan.payoutAmount).toLocaleString()} ({plan.expectedPayoutCount || 1} pers)
-            </Typography>
-          ) : (
-            <Typography variant="caption" color="text.secondary">
-              Not Configured
-            </Typography>
-          )}
-          <IconButton size="small">
-            {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </IconButton>
-        </Box>
-      </Box>
-      <Collapse in={expanded} timeout="auto" unmountOnExit>
-        <Box sx={{ mt: 2, pt: 1.5, borderTop: '1px solid', borderColor: 'divider', display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <TextField
-            type="number"
-            label="Payout Amount (₹)"
-            size="small"
-            value={plan.payoutAmount}
-            onChange={(e) => handlePlanChange(index, 'payoutAmount', e.target.value)}
-            placeholder="e.g. 95000"
-            fullWidth
-          />
-          <TextField
-            type="number"
-            label="Number of Persons"
-            size="small"
-            value={plan.expectedPayoutCount}
-            onChange={(e) => handlePlanChange(index, 'expectedPayoutCount', e.target.value)}
-            inputProps={{ min: 1 }}
-            fullWidth
-          />
-        </Box>
-      </Collapse>
     </Card>
   );
 };
@@ -343,41 +149,12 @@ const MobilePayoutPlanCard = ({ plan, index, handlePlanChange }) => {
 const Chits = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const [searchQueryPendingDues, setSearchQueryPendingDues] = useState('');
-  const [searchQueryLedger, setSearchQueryLedger] = useState('');
-  const [searchQueryMembers, setSearchQueryMembers] = useState('');
+  const navigate = useNavigate();
 
   const [chits, setChits] = useState([]);
   const [loadingChits, setLoadingChits] = useState(true);
-  const [allMembers, setAllMembers] = useState([]);
   const [open, setOpen] = useState(false);
-  const [assignOpen, setAssignOpen] = useState(false);
-  const [selectedChitToAssign, setSelectedChitToAssign] = useState(null);
-  const [selectedMemberToAssign, setSelectedMemberToAssign] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  
-  const [planOpen, setPlanOpen] = useState(false);
-  const [selectedChitForPlan, setSelectedChitForPlan] = useState(null);
-  const [payoutPlansState, setPayoutPlansState] = useState([]);
-  const [selectedSourceChit, setSelectedSourceChit] = useState('');
-  
-  const [membersOpen, setMembersOpen] = useState(false);
-  const [viewingChit, setViewingChit] = useState(null);
-  const [assignedMembers, setAssignedMembers] = useState([]);
-  const [loadingMembers, setLoadingMembers] = useState(false);
-
-  const [pendingDuesOpen, setPendingDuesOpen] = useState(false);
-  const [selectedChitForPendingDues, setSelectedChitForPendingDues] = useState(null);
-  const [pendingDuesData, setPendingDuesData] = useState(null);
-  const [loadingPendingDues, setLoadingPendingDues] = useState(false);
-  const [selectedDues, setSelectedDues] = useState({});
-  const [recordingPayments, setRecordingPayments] = useState(false);
-  const [pendingDuesRemarks, setPendingDuesRemarks] = useState('');
-
-  const [ledgerOpen, setLedgerOpen] = useState(false);
-  const [selectedChitForLedger, setSelectedChitForLedger] = useState(null);
-  const [ledgerData, setLedgerData] = useState([]);
-  const [loadingLedger, setLoadingLedger] = useState(false);
 
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm({
     defaultValues: {
@@ -387,173 +164,8 @@ const Chits = () => {
 
   const watchedStrategy = useWatch({ control, name: 'strategyType' });
 
-  const handleViewMembers = async (chit) => {
-    setViewingChit(chit);
-    setLoadingMembers(true);
-    setAssignedMembers([]);
-    setMembersOpen(true);
-    try {
-      const res = await api.get(`/chits/${chit.id}/members`);
-      setAssignedMembers(res.data || []);
-    } catch (error) {
-      console.error("Failed to load assigned members list", error);
-    } finally {
-      setLoadingMembers(false);
-    }
-  };
-
-  const handleRemoveMember = async (memberId) => {
-    if (!viewingChit) return;
-    if (window.confirm("Are you sure you want to remove this member from the chit group?")) {
-      try {
-        await api.delete(`/chits/${viewingChit.id}/members/${memberId}`);
-        // Refresh assigned members in modal
-        const res = await api.get(`/chits/${viewingChit.id}/members`);
-        setAssignedMembers(res.data || []);
-        // Refresh chits in the main table to update assigned counts
-        fetchChits();
-      } catch (error) {
-        console.error("Failed to remove member from chit group", error);
-        alert("Could not remove the member assignment. Please try again.");
-      }
-    }
-  };
-
-  const handleMembersClose = () => {
-    setMembersOpen(false);
-    setViewingChit(null);
-    setAssignedMembers([]);
-    setSearchQueryMembers('');
-  };
-
-  const handlePendingDuesOpen = async (chit) => {
-    setSelectedChitForPendingDues(chit);
-    setPendingDuesOpen(true);
-    setLoadingPendingDues(true);
-    setSelectedDues({});
-    try {
-      const res = await api.get(`/chits/${chit.id}/pending-dues`);
-      setPendingDuesData(res.data);
-    } catch (error) {
-      console.error("Failed to fetch pending dues", error);
-    } finally {
-      setLoadingPendingDues(false);
-    }
-  };
-
-  const handlePendingDuesClose = () => {
-    setPendingDuesOpen(false);
-    setSelectedChitForPendingDues(null);
-    setPendingDuesData(null);
-    setSelectedDues({});
-    setPendingDuesRemarks('');
-    setSearchQueryPendingDues('');
-  };
-
-  const handleCheckboxChange = (chitMemberId, monthNumber, amountDue, memberId) => {
-    const key = `${chitMemberId}-${monthNumber}`;
-    setSelectedDues(prev => {
-      const next = { ...prev };
-      if (next[key]) {
-        delete next[key];
-      } else {
-        next[key] = { chitMemberId, memberId, monthNumber, amountDue };
-      }
-      return next;
-    });
-  };
-
-  const handlePastDuesToggle = (chitMemberId, pastPendingItems, isAllChecked, memberId) => {
-    setSelectedDues(prev => {
-      const next = { ...prev };
-      pastPendingItems.forEach(item => {
-        const key = `${chitMemberId}-${item.monthNumber}`;
-        if (isAllChecked) {
-          delete next[key];
-        } else {
-          next[key] = { chitMemberId, memberId, monthNumber: item.monthNumber, amountDue: item.amountDue };
-        }
-      });
-      return next;
-    });
-  };
-
-  const handleRecordPayments = async () => {
-    const duesToPay = Object.values(selectedDues);
-    if (duesToPay.length === 0) return;
-
-    setRecordingPayments(true);
-    try {
-      for (const due of duesToPay) {
-        const payload = {
-          chitGroupId: selectedChitForPendingDues.id,
-          memberId: due.memberId,
-          chitMemberId: due.chitMemberId,
-          forMonth: due.monthNumber,
-          amountPaid: due.amountDue,
-          status: 'PAID',
-          paymentDate: new Date().toISOString().split('T')[0],
-          remarks: pendingDuesRemarks.trim() || `Paid via Pending Dues tab (Month ${due.monthNumber})`
-        };
-        await api.post('/collections', payload);
-      }
-
-      const res = await api.get(`/chits/${selectedChitForPendingDues.id}/pending-dues`);
-      setPendingDuesData(res.data);
-      setSelectedDues({});
-      setPendingDuesRemarks('');
-      fetchChits();
-      alert("Successfully recorded payments for selected months!");
-    } catch (error) {
-      console.error("Failed to record payments", error);
-      alert("An error occurred while recording payments. Please check logs.");
-    } finally {
-      setRecordingPayments(false);
-    }
-  };
-
-  const handleLedgerOpen = async (chit) => {
-    setSelectedChitForLedger(chit);
-    setLedgerOpen(true);
-    setLoadingLedger(true);
-    setLedgerData([]);
-    try {
-      const res = await api.get(`/collections/chit/${chit.id}`);
-      const groups = {};
-      const list = res.data || [];
-      list.forEach(c => {
-        if (c.status === 'PAID') {
-          const key = `${c.memberId}-${c.paymentDate}-${c.remarks || ''}`;
-          if (!groups[key]) {
-            groups[key] = {
-              memberName: c.memberName,
-              paymentDate: c.paymentDate,
-              remarks: c.remarks || '-',
-              totalAmountPaid: 0,
-              clearedMonths: []
-            };
-          }
-          groups[key].totalAmountPaid += c.amountPaid;
-          groups[key].clearedMonths.push(c.forMonth);
-        }
-      });
-      const sorted = Object.values(groups).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
-      setLedgerData(sorted);
-    } catch (error) {
-      console.error("Failed to load chit ledger data", error);
-    } finally {
-      setLoadingLedger(false);
-    }
-  };
-
-  const handleLedgerClose = () => {
-    setLedgerOpen(false);
-    setSelectedChitForLedger(null);
-    setLedgerData([]);
-    setSearchQueryLedger('');
-  };
-
   const fetchChits = async () => {
+    setLoadingChits(true);
     try {
       const response = await api.get('/chits');
       setChits(response.data || []);
@@ -564,18 +176,8 @@ const Chits = () => {
     }
   };
 
-  const fetchAllMembers = async () => {
-    try {
-      const response = await api.get('/members');
-      setAllMembers(response.data || []);
-    } catch (error) {
-      console.error('Failed to fetch members', error);
-    }
-  };
-
   useEffect(() => {
     fetchChits();
-    fetchAllMembers();
   }, []);
 
   const handleOpen = () => setOpen(true);
@@ -588,7 +190,6 @@ const Chits = () => {
     if (submitting) return;
     setSubmitting(true);
     try {
-      // Ensure numeric fields are correctly parsed
       const payload = {
         name: data.name,
         totalAmount: Number(data.totalAmount),
@@ -604,129 +205,12 @@ const Chits = () => {
       };
       await api.post('/chits', payload);
       handleClose();
-      fetchChits(); // Refresh list
+      fetchChits();
     } catch (error) {
       console.error('Failed to create chit group', error);
+      alert('Failed to create chit group. Please check fields.');
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const handleAssignOpen = (chitId) => {
-    setSelectedChitToAssign(chitId);
-    setAssignOpen(true);
-  };
-  const handleAssignClose = () => {
-    setAssignOpen(false);
-    setSelectedMemberToAssign('');
-    setSelectedChitToAssign(null);
-  };
-
-  const onAssignMember = async () => {
-    if (!selectedMemberToAssign || !selectedChitToAssign) return;
-    try {
-      await api.post(`/chits/${selectedChitToAssign}/members/${selectedMemberToAssign}`);
-      handleAssignClose();
-      fetchChits(); // Refresh list to update member count
-    } catch (error) {
-      console.error('Failed to assign member', error);
-      alert(error.response?.data?.message || 'Failed to assign member. The chit group might be full.');
-    }
-  };
-
-  const handlePlanOpen = async (chit) => {
-    setSelectedChitForPlan(chit);
-    try {
-      const response = await api.get(`/payouts/chit/${chit.id}/plans`);
-      if (response.data && response.data.length > 0) {
-        const sorted = [...response.data].sort((a, b) => a.monthNumber - b.monthNumber);
-        const existingPlans = sorted.map(p => ({
-          monthNumber: p.monthNumber,
-          payoutAmount: p.payoutAmount || '',
-          expectedPayoutCount: p.expectedPayoutCount || 1
-        }));
-        setPayoutPlansState(existingPlans);
-      } else {
-        const initialPlans = Array.from({ length: chit.durationMonths }, (_, i) => ({
-          monthNumber: i + 1,
-          payoutAmount: '',
-          expectedPayoutCount: 1
-        }));
-        setPayoutPlansState(initialPlans);
-      }
-    } catch (error) {
-      console.error("Failed to fetch existing payout plans", error);
-      const initialPlans = Array.from({ length: chit.durationMonths }, (_, i) => ({
-        monthNumber: i + 1,
-        payoutAmount: '',
-        expectedPayoutCount: 1
-      }));
-      setPayoutPlansState(initialPlans);
-    }
-    setPlanOpen(true);
-  };
-
-  const handlePlanClose = () => {
-    setPlanOpen(false);
-    setSelectedChitForPlan(null);
-    setPayoutPlansState([]);
-    setSelectedSourceChit('');
-  };
-
-  const handleCopyPlanFromChit = async (e) => {
-    const sourceChitId = e.target.value;
-    setSelectedSourceChit(sourceChitId);
-    if (sourceChitId) {
-      try {
-        const response = await api.get(`/payouts/chit/${sourceChitId}/plans`);
-        if (response.data && response.data.length > 0) {
-          const sorted = [...response.data].sort((a, b) => a.monthNumber - b.monthNumber);
-          const copiedPlans = sorted.map(p => ({
-            monthNumber: p.monthNumber,
-            payoutAmount: p.payoutAmount || '',
-            expectedPayoutCount: p.expectedPayoutCount || 1
-          }));
-          setPayoutPlansState(copiedPlans);
-        } else {
-          alert("The selected chit group does not have any payout plans configured yet.");
-          setSelectedSourceChit('');
-        }
-      } catch (error) {
-        console.error("Failed to fetch source payout plans", error);
-      }
-    }
-  };
-
-  const handlePlanChange = (index, field, value) => {
-    const updated = [...payoutPlansState];
-    updated[index][field] = value;
-    setPayoutPlansState(updated);
-  };
-
-  const onSavePlans = async () => {
-    try {
-      const payload = payoutPlansState.map(p => ({
-        monthNumber: Number(p.monthNumber),
-        payoutAmount: Number(p.payoutAmount),
-        expectedPayoutCount: Number(p.expectedPayoutCount)
-      }));
-      await api.post(`/payouts/chit/${selectedChitForPlan.id}/plans`, payload);
-      handlePlanClose();
-      // Optionally show success toast here
-    } catch (error) {
-      console.error('Failed to save payout plans', error);
-    }
-  };
-
-  const handleDeleteChit = async (chitId) => {
-    if (window.confirm("Are you sure you want to delete this chit group? This action cannot be undone.")) {
-      try {
-        await api.delete(`/chits/${chitId}`);
-        fetchChits(); // Refresh list after deletion
-      } catch (error) {
-        console.error('Failed to delete chit group', error);
-        alert("Could not delete the chit group. It might have associated records like members or payouts.");
-      }
     }
   };
 
@@ -739,50 +223,66 @@ const Chits = () => {
         </Button>
       </Box>
 
-      <Card>
-        <Box sx={{ overflowX: 'auto' }}>
-          <Table>
-            <TableHead>
-              <TableRow sx={{ backgroundColor: 'background.default' }}>
-                <TableCell sx={{ width: 50 }} />
-                <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
-                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, fontWeight: 'bold' }}>Total Amount</TableCell>
-                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, fontWeight: 'bold' }}>Duration</TableCell>
-                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, fontWeight: 'bold' }}>Members</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {loadingChits ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
-                    <CircularProgress size={30} />
-                  </TableCell>
-                </TableRow>
-              ) : chits.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-                    No chit groups found. Create one to get started!
-                  </TableCell>
-                </TableRow>
-              ) : (
-                chits.map((chit) => (
-                  <ChitRow
-                    key={chit.id}
-                    chit={chit}
-                    handleViewMembers={handleViewMembers}
-                    handlePendingDuesOpen={handlePendingDuesOpen}
-                    handleAssignOpen={handleAssignOpen}
-                    handlePlanOpen={handlePlanOpen}
-                    handleDeleteChit={handleDeleteChit}
-                    handleLedgerOpen={handleLedgerOpen}
-                  />
-                ))
-              )}
-            </TableBody>
-          </Table>
+      {isMobile ? (
+        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+          {loadingChits ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+              <CircularProgress size={30} />
+            </Box>
+          ) : chits.length === 0 ? (
+            <Card sx={{ p: 3, textAlign: 'center', color: 'text.secondary', borderStyle: 'dashed', borderWidth: '2px', borderColor: 'divider' }}>
+              No chit groups found. Create one to get started!
+            </Card>
+          ) : (
+            chits.map((chit) => (
+              <MobileChitRow
+                key={chit.id}
+                chit={chit}
+                onClick={() => navigate(`/chits/${chit.id}`)}
+              />
+            ))
+          )}
         </Box>
-      </Card>
+      ) : (
+        <Card sx={{ display: { xs: 'none', md: 'block' } }}>
+          <Box sx={{ overflowX: 'auto' }}>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ backgroundColor: 'background.default' }}>
+                  <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>Name</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, fontWeight: 'bold' }}>Total Amount</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, fontWeight: 'bold' }}>Duration</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, fontWeight: 'bold' }}>Members</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', pr: 3 }}>Status</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {loadingChits ? (
+                  <TableRow>
+                    <TableCell colSpan={5} align="center" sx={{ py: 6 }}>
+                      <CircularProgress size={30} />
+                    </TableCell>
+                  </TableRow>
+                ) : chits.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                      No chit groups found. Create one to get started!
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  chits.map((chit) => (
+                    <ChitRow
+                      key={chit.id}
+                      chit={chit}
+                      onClick={() => navigate(`/chits/${chit.id}`)}
+                    />
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </Box>
+        </Card>
+      )}
 
       {/* Create Chit Group Modal */}
       <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth disableEnforceFocus>
@@ -1011,694 +511,6 @@ const Chits = () => {
             </Button>
           </DialogActions>
         </form>
-      </Dialog>
-
-      {/* Assign Member Modal */}
-      <Dialog open={assignOpen} onClose={handleAssignClose} maxWidth="xs" fullWidth disableEnforceFocus>
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 'bold' }}>
-          <span>Assign Member to Chit Group</span>
-          <IconButton onClick={handleAssignClose} color="inherit" size="small">
-            <X size={20} />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers>
-          <Box sx={{ width: '100%', mt: 1 }}>
-            <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
-              Select Member
-            </Typography>
-            <FormControl fullWidth sx={{ width: '100%' }} size="small">
-              <Select
-                sx={{ width: '100%' }}
-                value={selectedMemberToAssign}
-                onChange={(e) => setSelectedMemberToAssign(e.target.value)}
-                displayEmpty
-              >
-                <MenuItem value="" disabled>-- Select a Member --</MenuItem>
-                {allMembers.length === 0 ? (
-                  <MenuItem disabled value="">No members found. Please add a member first.</MenuItem>
-                ) : (
-                  allMembers.map((member) => (
-                    <MenuItem key={member.id} value={member.id}>
-                      {member.name} - {member.phone}
-                    </MenuItem>
-                  ))
-                )}
-              </Select>
-            </FormControl>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={handleAssignClose} color="inherit">Cancel</Button>
-          <Button onClick={onAssignMember} variant="contained" color="primary" disabled={!selectedMemberToAssign}>
-            Assign
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Configure Payout Plan Modal */}
-      <Dialog open={planOpen} onClose={handlePlanClose} maxWidth="md" fullWidth disableEnforceFocus>
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', fontWeight: 'bold' }}>
-          <Box>
-            <span>Configure Payout Plans for {selectedChitForPlan?.name}</span>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Fill in the expected payout amount and number of persons for all {selectedChitForPlan?.durationMonths} months.
-            </Typography>
-          </Box>
-          <IconButton onClick={handlePlanClose} color="inherit" size="small">
-            <X size={20} />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers>
-          {selectedChitForPlan && (
-            <Box sx={{ mb: 3, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, alignItems: { xs: 'stretch', sm: 'center' } }}>
-              <FormControl sx={{ minWidth: { xs: '100%', sm: 320 } }} size="small">
-                <InputLabel>Copy Configuration from Existing Group</InputLabel>
-                <Select
-                  value={selectedSourceChit}
-                  label="Copy Configuration from Existing Group"
-                  onChange={handleCopyPlanFromChit}
-                >
-                  <MenuItem value=""><em>None (Configure from scratch)</em></MenuItem>
-                  {chits
-                    .filter(c => c.id !== selectedChitForPlan.id && c.durationMonths === selectedChitForPlan.durationMonths)
-                    .map(c => (
-                      <MenuItem key={c.id} value={c.id}>
-                        {c.name} ({c.durationMonths} months)
-                      </MenuItem>
-                    ))
-                  }
-                </Select>
-              </FormControl>
-              <Typography variant="body2" color="text.secondary">
-                Select an existing group of the same duration to instantly copy its payout plan structure.
-              </Typography>
-            </Box>
-          )}
-          
-          {isMobile ? (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {payoutPlansState.map((plan, index) => (
-                <MobilePayoutPlanCard
-                  key={index}
-                  plan={plan}
-                  index={index}
-                  handlePlanChange={handlePlanChange}
-                />
-              ))}
-            </Box>
-          ) : (
-            <Box sx={{ overflowX: 'auto', width: '100%' }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 'bold' }}>Month Number</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold' }}>Payout Amount (₹)</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold' }}>Number of Persons</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {payoutPlansState.map((plan, index) => (
-                    <TableRow key={index}>
-                      <TableCell>Month {plan.monthNumber}</TableCell>
-                      <TableCell>
-                        <TextField
-                          type="number"
-                          size="small"
-                          value={plan.payoutAmount}
-                          onChange={(e) => handlePlanChange(index, 'payoutAmount', e.target.value)}
-                          placeholder="e.g. 95000"
-                          fullWidth
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <TextField
-                          type="number"
-                          size="small"
-                          value={plan.expectedPayoutCount}
-                          onChange={(e) => handlePlanChange(index, 'expectedPayoutCount', e.target.value)}
-                          inputProps={{ min: 1 }}
-                          fullWidth
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={handlePlanClose} color="inherit">Cancel</Button>
-          <Button onClick={onSavePlans} variant="contained" color="primary">
-            Save Configuration
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* View Assigned Members Dialog */}
-      <Dialog open={membersOpen} onClose={handleMembersClose} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1.5 }}>
-          <span>Assigned Members ({assignedMembers.length} / {viewingChit?.memberCount})</span>
-          <IconButton onClick={handleMembersClose} color="inherit" size="small">
-            <X size={20} />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers sx={{ backgroundColor: 'background.default', p: 3 }}>
-          {loadingMembers && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', py: 6, gap: 2 }}>
-              <CircularProgress size={30} />
-              <Typography color="text.secondary" variant="body2">Loading assigned members...</Typography>
-            </Box>
-          )}
-
-          {!loadingMembers && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {/* Search Bar */}
-              <TextField
-                fullWidth
-                variant="outlined"
-                placeholder="Search assigned members..."
-                value={searchQueryMembers}
-                onChange={(e) => setSearchQueryMembers(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search size={18} color="#888" />
-                    </InputAdornment>
-                  ),
-                }}
-                size="small"
-              />
-
-              {(() => {
-                const sortedAssignedMembers = [...assignedMembers].sort((a, b) => a.name.localeCompare(b.name));
-                const filteredAssigned = sortedAssignedMembers.filter(m =>
-                  m.name && m.name.toLowerCase().includes(searchQueryMembers.toLowerCase())
-                );
-
-                if (assignedMembers.length === 0) {
-                  return (
-                    <Card sx={{ p: 3, textAlign: 'center', backgroundColor: 'background.paper' }}>
-                      <Typography color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                        No members assigned to this chit group yet.
-                      </Typography>
-                    </Card>
-                  );
-                }
-
-                if (filteredAssigned.length === 0) {
-                  return (
-                    <Card sx={{ p: 3, textAlign: 'center', backgroundColor: 'background.paper' }}>
-                      <Typography color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                        No members found matching "{searchQueryMembers}"
-                      </Typography>
-                    </Card>
-                  );
-                }
-
-                if (isMobile) {
-                  return (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                      {filteredAssigned.map(m => (
-                        <Card key={m.chitMemberId || m.id} sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'background.paper', border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
-                          <Box>
-                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
-                              {m.name} {m.slotIndex ? `(Spot #${m.slotIndex})` : ''}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              Phone: {m.phone || '-'}
-                            </Typography>
-                          </Box>
-                          <IconButton 
-                            size="small" 
-                            color="error" 
-                            onClick={() => handleRemoveMember(m.chitMemberId || m.id)} 
-                            title="Remove from Chit Group"
-                          >
-                            <Trash2 size={16} />
-                          </IconButton>
-                        </Card>
-                      ))}
-                    </Box>
-                  );
-                }
-
-                return (
-                  <Card sx={{ p: 0 }}>
-                    <Box sx={{ overflowX: 'auto', width: '100%' }}>
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow sx={{ backgroundColor: 'action.hover' }}>
-                            <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>Member Name</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold', px: 2 }}>Phone Number</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold', pr: 3 }} align="right">Actions</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {filteredAssigned.map(m => (
-                            <TableRow key={m.chitMemberId || m.id} hover>
-                              <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>
-                                {m.name} {m.slotIndex ? `(Spot #${m.slotIndex})` : ''}
-                              </TableCell>
-                              <TableCell sx={{ px: 2 }}>{m.phone}</TableCell>
-                              <TableCell sx={{ pr: 3 }} align="right">
-                                <IconButton 
-                                  size="small" 
-                                  color="error" 
-                                  onClick={() => handleRemoveMember(m.chitMemberId || m.id)} 
-                                  title="Remove from Chit Group"
-                                >
-                                  <Trash2 size={16} />
-                                </IconButton>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </Box>
-                  </Card>
-                );
-              })()}
-            </Box>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* View Pending Dues Dialog */}
-      <Dialog open={pendingDuesOpen} onClose={handlePendingDuesClose} maxWidth="md" fullWidth disableEnforceFocus>
-        <DialogTitle sx={{ fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1.5 }}>
-          <Box>
-            <span>Pending Dues Summary</span>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Group: {selectedChitForPendingDues?.name} | Current Month: Month {pendingDuesData?.currentMonth}
-            </Typography>
-          </Box>
-          <IconButton onClick={handlePendingDuesClose} color="inherit" size="small">
-            <X size={20} />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers sx={{ backgroundColor: 'background.default', p: 3 }}>
-          {loadingPendingDues && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', py: 6, gap: 2 }}>
-              <CircularProgress size={30} />
-              <Typography color="text.secondary" variant="body2">Loading pending dues...</Typography>
-            </Box>
-          )}
-
-          {!loadingPendingDues && pendingDuesData && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              {/* Summary Stats */}
-              <Card sx={{ p: 2, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, backgroundColor: 'background.paper' }}>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">Total Outstanding Dues (till Month {pendingDuesData.currentMonth})</Typography>
-                  <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'error.main' }}>
-                    ₹{pendingDuesData.totalPendingAmount?.toLocaleString()}
-                  </Typography>
-                </Box>
-                <Box sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
-                  <Typography variant="subtitle2" color="text.secondary">Total Selected to Pay</Typography>
-                  <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'success.main' }}>
-                    ₹{Object.values(selectedDues).reduce((sum, d) => sum + Number(d.amountDue), 0).toLocaleString()}
-                  </Typography>
-                </Box>
-              </Card>
-
-              {/* Search Bar */}
-              <TextField
-                fullWidth
-                variant="outlined"
-                placeholder="Search by member name..."
-                value={searchQueryPendingDues}
-                onChange={(e) => setSearchQueryPendingDues(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search size={18} color="#888" />
-                    </InputAdornment>
-                  ),
-                }}
-                size="small"
-              />
-
-              {/* Members List */}
-              {(() => {
-                const groupedPending = [];
-                const groupedMap = {};
-                (pendingDuesData.membersPending || []).forEach(m => {
-                  if (!groupedMap[m.memberId]) {
-                    groupedMap[m.memberId] = {
-                      memberId: m.memberId,
-                      memberName: m.memberName,
-                      memberPhone: m.memberPhone,
-                      totalPending: 0,
-                      slots: []
-                    };
-                    groupedPending.push(groupedMap[m.memberId]);
-                  }
-                  groupedMap[m.memberId].slots.push(m);
-                  groupedMap[m.memberId].totalPending += m.totalPending;
-                });
-
-                // Sort alphabetically by memberName
-                groupedPending.sort((a, b) => a.memberName.localeCompare(b.memberName));
-
-                // Filter by search query
-                const filteredPending = groupedPending.filter(item =>
-                  item.memberName && item.memberName.toLowerCase().includes(searchQueryPendingDues.toLowerCase())
-                );
-
-                if (groupedPending.length === 0) {
-                  return (
-                    <Card sx={{ p: 3, textAlign: 'center', backgroundColor: 'background.paper' }}>
-                      <Typography color="success.main" sx={{ fontWeight: 'bold' }}>
-                        🎉 No pending dues for this chit group up to Month {pendingDuesData.currentMonth}!
-                      </Typography>
-                    </Card>
-                  );
-                }
-
-                if (filteredPending.length === 0) {
-                  return (
-                    <Card sx={{ p: 3, textAlign: 'center', backgroundColor: 'background.paper' }}>
-                      <Typography color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                        No members found matching "{searchQueryPendingDues}"
-                      </Typography>
-                    </Card>
-                  );
-                }
-
-                if (isMobile) {
-                  return (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      {filteredPending.map(groupedMember => (
-                        <MobilePendingMemberCard
-                          key={groupedMember.memberId}
-                          groupedMember={groupedMember}
-                          selectedDues={selectedDues}
-                          pendingDuesData={pendingDuesData}
-                          handlePastDuesToggle={handlePastDuesToggle}
-                          handleCheckboxChange={handleCheckboxChange}
-                        />
-                      ))}
-                    </Box>
-                  );
-                }
-
-                return (
-                  <Card sx={{ p: 0 }}>
-                    <Box sx={{ overflowX: 'auto', width: '100%' }}>
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow sx={{ backgroundColor: 'action.hover' }}>
-                            <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>Member Name</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Phone</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Pending Months & Due Amount</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold', pr: 3 }} align="right">Total Pending</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {filteredPending.map((groupedMember) => (
-                            <TableRow key={groupedMember.memberId} hover>
-                              <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>
-                                {groupedMember.memberName}
-                                {groupedMember.slots.length > 1 && (
-                                  <Typography variant="caption" display="block" color="text.secondary">
-                                    ({groupedMember.slots.length} spots)
-                                  </Typography>
-                                )}
-                              </TableCell>
-                              <TableCell>{groupedMember.memberPhone || '-'}</TableCell>
-                              <TableCell>
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, py: 1 }}>
-                                  {groupedMember.slots.map((slot, sIdx) => {
-                                    const label = groupedMember.slots.length > 1 ? `Spot #${sIdx + 1}: ` : '';
-                                    const currentMonthNum = pendingDuesData.currentMonth;
-                                    const pastPending = slot.pendingMonths.filter(pm => pm.monthNumber < currentMonthNum);
-                                    const currentOrFuturePending = slot.pendingMonths.filter(pm => pm.monthNumber >= currentMonthNum);
-                                    
-                                    const pastTotal = pastPending.reduce((sum, pm) => sum + pm.amountDue, 0);
-                                    const isPastChecked = pastPending.length > 0 && pastPending.every(pm => !!selectedDues[`${slot.chitMemberId}-${pm.monthNumber}`]);
-                                    
-                                    return (
-                                      <Box key={slot.chitMemberId} sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                                        {label && <Typography variant="caption" sx={{ fontWeight: 'bold', minWidth: 60 }}>{label}</Typography>}
-                                        {pastPending.length > 0 && (
-                                          <Chip
-                                            label={`Past Dues: ₹${pastTotal.toLocaleString()}`}
-                                            color={isPastChecked ? "primary" : "default"}
-                                            variant={isPastChecked ? "contained" : "outlined"}
-                                            onClick={() => handlePastDuesToggle(slot.chitMemberId, pastPending, isPastChecked, groupedMember.memberId)}
-                                            sx={{ 
-                                              cursor: 'pointer',
-                                              fontSize: '0.8rem',
-                                              fontWeight: isPastChecked ? 'bold' : 'normal',
-                                              borderColor: 'warning.light',
-                                              '&:hover': {
-                                                backgroundColor: isPastChecked ? 'primary.dark' : 'action.hover'
-                                              }
-                                            }}
-                                          />
-                                        )}
-                                        {currentOrFuturePending.map(pm => {
-                                          const key = `${slot.chitMemberId}-${pm.monthNumber}`;
-                                          const isChecked = !!selectedDues[key];
-                                          return (
-                                            <Chip
-                                              key={pm.monthNumber}
-                                              label={`M${pm.monthNumber}: ₹${pm.amountDue.toLocaleString()}`}
-                                              color={isChecked ? "primary" : "default"}
-                                              variant={isChecked ? "contained" : "outlined"}
-                                              onClick={() => handleCheckboxChange(slot.chitMemberId, pm.monthNumber, pm.amountDue, groupedMember.memberId)}
-                                              sx={{ 
-                                                cursor: 'pointer',
-                                                fontSize: '0.8rem',
-                                                fontWeight: isChecked ? 'bold' : 'normal',
-                                                '&:hover': {
-                                                  backgroundColor: isChecked ? 'primary.dark' : 'action.hover'
-                                                }
-                                              }}
-                                            />
-                                          );
-                                        })}
-                                      </Box>
-                                    );
-                                  })}
-                                </Box>
-                              </TableCell>
-                              <TableCell sx={{ pr: 3, fontWeight: 'bold', color: 'error.main' }} align="right">
-                                ₹{groupedMember.totalPending?.toLocaleString()}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </Box>
-                  </Card>
-                );
-              })()}
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ p: 2, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start', flexGrow: 1, width: { xs: '100%', sm: 'auto' } }}>
-            <Typography variant="body2" color="text.secondary" sx={{ pl: 1 }}>
-              Click on the Month Chips to select/deselect them for payment.
-            </Typography>
-            <TextField
-              size="small"
-              placeholder="Payment method / remarks (e.g. PhonePe, Cash)"
-              value={pendingDuesRemarks}
-              onChange={(e) => setPendingDuesRemarks(e.target.value)}
-              sx={{ width: { xs: '100%', sm: 320 }, mt: 0.5 }}
-            />
-          </Box>
-          <Box sx={{ display: 'flex', gap: 1, width: { xs: '100%', sm: 'auto' }, justifyContent: 'flex-end' }}>
-            <Button onClick={handlePendingDuesClose} color="inherit">Cancel</Button>
-            <Button 
-              onClick={handleRecordPayments} 
-              variant="contained" 
-              color="primary"
-              disabled={recordingPayments || Object.keys(selectedDues).length === 0}
-            >
-              {recordingPayments ? "Recording Payments..." : `Mark Selected Dues as Paid (${Object.keys(selectedDues).length})`}
-            </Button>
-          </Box>
-        </DialogActions>
-      </Dialog>
-
-      {/* Chit Ledger Dialog */}
-      <Dialog 
-        open={ledgerOpen} 
-        onClose={handleLedgerClose} 
-        maxWidth="md" 
-        fullWidth 
-        disableEnforceFocus
-      >
-        <DialogTitle sx={{ fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1.5 }}>
-          <Box>
-            <span>Chit Ledger</span>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Group: {selectedChitForLedger?.name}
-            </Typography>
-          </Box>
-          <IconButton onClick={handleLedgerClose} color="inherit" size="small">
-            <X size={20} />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers sx={{ backgroundColor: 'background.default', p: 3 }}>
-          {loadingLedger && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', py: 6, gap: 2 }}>
-              <CircularProgress size={30} />
-              <Typography color="text.secondary" variant="body2">Loading ledger history...</Typography>
-            </Box>
-          )}
-
-          {!loadingLedger && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              {/* Summary Stats */}
-              <Card sx={{ p: 2, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, backgroundColor: 'background.paper' }}>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">Total Collected Amount</Typography>
-                  <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'success.main' }}>
-                    ₹{ledgerData.reduce((sum, entry) => sum + entry.totalAmountPaid, 0).toLocaleString()}
-                  </Typography>
-                </Box>
-                <Box sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
-                  <Typography variant="subtitle2" color="text.secondary">Total Transactions</Typography>
-                  <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                    {ledgerData.length}
-                  </Typography>
-                </Box>
-              </Card>
-
-              {/* Search Bar */}
-              <TextField
-                fullWidth
-                variant="outlined"
-                placeholder="Search by member name..."
-                value={searchQueryLedger}
-                onChange={(e) => setSearchQueryLedger(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search size={18} color="#888" />
-                    </InputAdornment>
-                  ),
-                }}
-                size="small"
-              />
-
-              {/* Transactions List */}
-              {(() => {
-                // Group ledger entries by member name
-                const memberLedgerGroups = {};
-                ledgerData.forEach(entry => {
-                  if (!memberLedgerGroups[entry.memberName]) {
-                    memberLedgerGroups[entry.memberName] = {
-                      memberName: entry.memberName,
-                      totalPaid: 0,
-                      payments: []
-                    };
-                  }
-                  memberLedgerGroups[entry.memberName].totalPaid += entry.totalAmountPaid;
-                  memberLedgerGroups[entry.memberName].payments.push(entry);
-                });
-
-                // Sort alphabetically by memberName
-                const sortedGroups = Object.values(memberLedgerGroups).sort((a, b) =>
-                  a.memberName.localeCompare(b.memberName)
-                );
-
-                // Filter by search query
-                const filteredGroups = sortedGroups.filter(g =>
-                  g.memberName && g.memberName.toLowerCase().includes(searchQueryLedger.toLowerCase())
-                );
-
-                if (ledgerData.length === 0) {
-                  return (
-                    <Card sx={{ p: 3, textAlign: 'center', backgroundColor: 'background.paper' }}>
-                      <Typography color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                        No payment records found for this chit group yet.
-                      </Typography>
-                    </Card>
-                  );
-                }
-
-                if (filteredGroups.length === 0) {
-                  return (
-                    <Card sx={{ p: 3, textAlign: 'center', backgroundColor: 'background.paper' }}>
-                      <Typography color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                        No payments found matching "{searchQueryLedger}"
-                      </Typography>
-                    </Card>
-                  );
-                }
-
-                if (isMobile) {
-                  return (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      {filteredGroups.map((group, idx) => (
-                        <MobileLedgerRow key={idx} memberGroup={group} />
-                      ))}
-                    </Box>
-                  );
-                }
-
-                // Desktop view: original flat transactions list but filtered by search query
-                const filteredFlatLedger = ledgerData.filter(entry =>
-                  entry.memberName && entry.memberName.toLowerCase().includes(searchQueryLedger.toLowerCase())
-                );
-
-                return (
-                  <Card sx={{ p: 0 }}>
-                    <Box sx={{ overflowX: 'auto' }}>
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow sx={{ backgroundColor: 'action.hover' }}>
-                            <TableCell sx={{ fontWeight: 'bold', pl: 3 }}>Payment Date</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Member Name</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Cleared Months</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Remarks</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold', pr: 3 }} align="right">Amount Paid</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {filteredFlatLedger.map((entry, idx) => (
-                            <TableRow key={idx} hover>
-                              <TableCell sx={{ pl: 3 }}>{entry.paymentDate || '-'}</TableCell>
-                              <TableCell sx={{ fontWeight: 'bold' }}>{entry.memberName}</TableCell>
-                              <TableCell>
-                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, py: 0.5 }}>
-                                  {entry.clearedMonths.sort((a, b) => a - b).map(m => (
-                                    <Chip
-                                      key={m}
-                                      label={`Month ${m}`}
-                                      size="small"
-                                      color="secondary"
-                                      variant="outlined"
-                                      sx={{ fontSize: '0.75rem', height: 20 }}
-                                    />
-                                  ))}
-                                </Box>
-                              </TableCell>
-                              <TableCell>{entry.remarks || '-'}</TableCell>
-                              <TableCell sx={{ pr: 3, fontWeight: 'bold', color: 'success.main' }} align="right">
-                                ₹{entry.totalAmountPaid.toLocaleString()}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </Box>
-                  </Card>
-                );
-              })()}
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={handleLedgerClose} variant="contained" color="primary">Done</Button>
-        </DialogActions>
       </Dialog>
     </Box>
   );
