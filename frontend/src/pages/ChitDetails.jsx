@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Card, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, Chip, TextField, Grid, IconButton, FormControl, InputLabel, Select, MenuItem, CircularProgress, Collapse, Tabs, Tab, useMediaQuery, useTheme, InputAdornment, Paper } from '@mui/material';
 import { ArrowLeft, UserPlus, Trash2, Users, Clock, ChevronDown, ChevronUp, Receipt, Search, X, Settings2 } from 'lucide-react';
 import api from '../api/axiosConfig';
+import { useToast } from '../components/ToastProvider';
 
 // Helper function to extract initials from a name
 const getInitials = (name) => {
@@ -258,6 +259,7 @@ const ChitDetails = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { showToast } = useToast();
 
   // Main State
   const [chit, setChit] = useState(null);
@@ -298,7 +300,7 @@ const ChitDetails = () => {
       setChit(res.data);
     } catch (error) {
       console.error("Failed to fetch chit details", error);
-      alert("Could not load chit group details. Redirecting to list.");
+      showToast("Could not load chit group details. Redirecting to list.", "error");
       navigate('/chits');
     } finally {
       setLoadingChit(false);
@@ -369,7 +371,7 @@ const ChitDetails = () => {
       setChit(res.data);
     } catch (error) {
       console.error("Failed to assign member", error);
-      alert(error.response?.data?.message || 'Failed to assign member. The chit group might be full.');
+      showToast(error.response?.data?.message || 'Failed to assign member. The chit group might be full.', 'error');
     }
   };
 
@@ -383,7 +385,7 @@ const ChitDetails = () => {
         setChit(res.data);
       } catch (error) {
         console.error("Failed to remove member", error);
-        alert("Could not remove the member assignment.");
+        showToast("Could not remove the member assignment.", "error");
       }
     }
   };
@@ -452,10 +454,10 @@ const ChitDetails = () => {
       setSelectedDues({});
       setPendingDuesRemarks('');
       fetchPendingDues();
-      alert("Successfully recorded payments!");
+      showToast("Successfully recorded payments!", "success");
     } catch (error) {
       console.error("Failed to record payments", error);
-      alert("An error occurred while recording payments.");
+      showToast("An error occurred while recording payments.", "error");
     } finally {
       setRecordingPayments(false);
     }
@@ -513,7 +515,7 @@ const ChitDetails = () => {
           }));
           setPayoutPlansState(copiedPlans);
         } else {
-          alert("The selected chit group does not have any payout plans configured yet.");
+          showToast("The selected chit group does not have any payout plans configured yet.", "warning");
           setSelectedSourceChit('');
         }
       } catch (error) {
@@ -531,10 +533,10 @@ const ChitDetails = () => {
         expectedPayoutCount: Number(p.expectedPayoutCount)
       }));
       await api.post(`/payouts/chit/${id}/plans`, payload);
-      alert("Payout plans saved successfully!");
+      showToast("Payout plans saved successfully!", "success");
     } catch (error) {
       console.error('Failed to save payout plans', error);
-      alert("Failed to save payout plans.");
+      showToast("Failed to save payout plans.", "error");
     } finally {
       setSavingPlans(false);
     }
@@ -600,7 +602,7 @@ const ChitDetails = () => {
         navigate('/chits');
       } catch (error) {
         console.error('Failed to delete chit group', error);
-        alert("Could not delete the chit group. It might have associated records like members or payouts.");
+        showToast("Could not delete the chit group. It might have associated records like members or payouts.", "error");
       }
     }
   };

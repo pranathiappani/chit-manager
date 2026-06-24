@@ -3,6 +3,7 @@ import { Box, Card, Typography, Button, Table, TableBody, TableCell, TableHead, 
 import { useForm } from 'react-hook-form';
 import { Plus, Edit2, Trash2, Eye, Landmark, Wallet, ChevronDown, ChevronUp, Search, X } from 'lucide-react';
 import api from '../api/axiosConfig';
+import { useToast } from '../components/ToastProvider';
 
 // Helper function to extract initials from a name
 const getInitials = (name) => {
@@ -143,6 +144,7 @@ const MobileMemberRow = ({ member, handleViewDetails, handleEditClick, handleDel
 const Members = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { showToast } = useToast();
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -257,7 +259,7 @@ const Members = () => {
         fetchMembers();
       } catch (error) {
         console.error('Failed to delete member', error);
-        alert("Could not delete the member. It might have active dependencies.");
+        showToast("Could not delete the member. It might have active dependencies.", "error");
       }
     }
   };

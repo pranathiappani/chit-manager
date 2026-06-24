@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Grid, Card, CardContent, Typography, Box, CircularProgress, useTheme, Table, TableBody, TableCell, TableHead, TableRow, Chip, Button, Alert, LinearProgress } from '@mui/material';
 import { Users, Wallet, TrendingUp, AlertCircle } from 'lucide-react';
 import api from '../api/axiosConfig';
+import { useToast } from '../components/ToastProvider';
 
 const StatCard = ({ title, value, icon, color }) => {
   const theme = useTheme();
@@ -93,6 +94,7 @@ const StatCard = ({ title, value, icon, color }) => {
 };
 
 const Dashboard = () => {
+  const { showToast } = useToast();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -121,14 +123,16 @@ const Dashboard = () => {
       if (confirmation2 === 'RESET') {
         try {
           const response = await api.post('/admin/clear');
-          alert(response.data);
-          window.location.reload();
+          showToast(response.data || "Database wiped successfully.", "success");
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
         } catch (error) {
           console.error('Failed to clear database', error);
-          alert('Failed to clear database. Please verify connection to the server.');
+          showToast('Failed to clear database. Please verify connection to the server.', 'error');
         }
       } else {
-        alert("Reset cancelled. Typing did not match 'RESET'.");
+        showToast("Reset cancelled. Typing did not match 'RESET'.", "info");
       }
     }
   };

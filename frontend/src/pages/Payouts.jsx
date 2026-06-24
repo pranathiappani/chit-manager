@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Card, CardContent, Typography, Grid, Table, TableBody, TableCell, TableHead, TableRow, MenuItem, Select, FormControl, InputLabel, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Chip, CircularProgress, IconButton } from '@mui/material';
 import { useForm, useWatch, Controller } from 'react-hook-form';
 import api from '../api/axiosConfig';
+import { useToast } from '../components/ToastProvider';
 import { Wallet, CheckCircle, Clock, TrendingUp, X } from 'lucide-react';
 import { formatMonth } from '../utils/dateUtils';
 
@@ -26,6 +27,7 @@ const StatCard = ({ title, value, icon, color }) => (
 );
 
 const Payouts = () => {
+  const { showToast } = useToast();
   const [chits, setChits] = useState([]);
   const [selectedChit, setSelectedChit] = useState('');
   const [members, setMembers] = useState([]);
@@ -132,7 +134,7 @@ const Payouts = () => {
         loadChitData(selectedChit);
       } catch (error) {
         console.error('Failed to delete payout', error);
-        alert("Could not delete the payout record.");
+        showToast("Could not delete the payout record.", "error");
       }
     }
   };

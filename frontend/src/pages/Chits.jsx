@@ -4,6 +4,7 @@ import { Box, Card, Typography, Button, Table, TableBody, TableCell, TableHead, 
 import { useForm, useWatch, Controller } from 'react-hook-form';
 import { Plus, X } from 'lucide-react';
 import api from '../api/axiosConfig';
+import { useToast } from '../components/ToastProvider';
 
 // Helper function to extract initials from a name
 const getInitials = (name) => {
@@ -150,6 +151,7 @@ const Chits = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const [chits, setChits] = useState([]);
   const [loadingChits, setLoadingChits] = useState(true);
@@ -208,7 +210,7 @@ const Chits = () => {
       fetchChits();
     } catch (error) {
       console.error('Failed to create chit group', error);
-      alert('Failed to create chit group. Please check fields.');
+      showToast('Failed to create chit group. Please check fields.', 'error');
     } finally {
       setSubmitting(false);
     }

@@ -13,6 +13,7 @@ import Loans from './pages/Loans';
 import Settings from './pages/Settings';
 import Layout from './components/Layout';
 import { useAuthStore, useThemeStore } from './store';
+import { ToastProvider } from './components/ToastProvider';
 
 const parseJwt = (token) => {
   try {
@@ -88,29 +89,31 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Router>
-        <Routes>
-          <Route path="/login" element={<Login initialFlow="signin" />} />
-          <Route path="/signup" element={<Login initialFlow="signup" />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Layout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<Dashboard />} />
-            <Route path="members" element={<Members />} />
-            <Route path="chits" element={<Chits />} />
-            <Route path="chits/:id" element={<ChitDetails />} />
-            <Route path="collections" element={<Collections />} />
-            <Route path="payouts" element={<Payouts />} />
-            <Route path="loans" element={<Loans />} />
-            <Route path="settings" element={<Settings />} />
-          </Route>
-        </Routes>
-      </Router>
+      <ToastProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<Login initialFlow="signin" />} />
+            <Route path="/signup" element={<Login initialFlow="signup" />} />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Dashboard />} />
+              <Route path="members" element={<Members />} />
+              <Route path="chits" element={<Chits />} />
+              <Route path="chits/:id" element={<ChitDetails />} />
+              <Route path="collections" element={<Collections />} />
+              <Route path="payouts" element={<Payouts />} />
+              <Route path="loans" element={<Loans />} />
+              <Route path="settings" element={<Settings />} />
+            </Route>
+          </Routes>
+        </Router>
+      </ToastProvider>
     </ThemeProvider>
   );
 }

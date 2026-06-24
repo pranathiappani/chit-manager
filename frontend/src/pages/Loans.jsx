@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Card, CardContent, Typography, Grid, Table, TableBody, TableCell, TableHead, TableRow, MenuItem, Select, FormControl, InputLabel, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Chip, Divider, CircularProgress, IconButton, Collapse, useMediaQuery, useTheme, InputAdornment } from '@mui/material';
 import { Landmark, ArrowUpRight, CheckCircle, Clock, Percent, DollarSign, Calendar, ChevronUp, ChevronDown, Search, X } from 'lucide-react';
 import api from '../api/axiosConfig';
+import { useToast } from '../components/ToastProvider';
 
 const StatCard = ({ title, value, icon, color }) => (
   <Card sx={{ width: '100%', height: '100%', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-2px)' } }}>
@@ -65,6 +66,7 @@ const MobileRepaymentCard = ({ payment }) => {
 const Loans = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { showToast } = useToast();
   const [searchQueryRepayments, setSearchQueryRepayments] = useState('');
   const [loans, setLoans] = useState([]);
   const [members, setMembers] = useState([]);
@@ -173,7 +175,7 @@ const Loans = () => {
         fetchLoansAndMembers();
       } catch (error) {
         console.error('Failed to delete loan', error);
-        alert("Could not delete the loan record.");
+        showToast("Could not delete the loan record.", "error");
       }
     }
   };

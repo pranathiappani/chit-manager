@@ -3,8 +3,10 @@ import { Box, Card, Typography, Table, TableBody, TableCell, TableHead, TableRow
 import { MessageCircle } from 'lucide-react';
 import api from '../api/axiosConfig';
 import { formatMonth } from '../utils/dateUtils';
+import { useToast } from '../components/ToastProvider';
 
 const Collections = () => {
+  const { showToast } = useToast();
   const [chits, setChits] = useState([]);
   const [selectedChit, setSelectedChit] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('');
@@ -133,7 +135,7 @@ const Collections = () => {
         });
       } catch (error) {
         console.error('Failed to unmark paid', error);
-        alert("Failed to unmark paid. Please check the backend connection.");
+        showToast("Failed to unmark paid. Please check the backend connection.", "error");
       }
     }
   };
